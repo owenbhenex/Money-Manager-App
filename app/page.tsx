@@ -33,6 +33,12 @@ import { SubscriptionsPanel } from '@/components/subscriptions/SubscriptionsPane
 import { ExtractedTransaction, Transaction } from '@/types/database.types';
 import { Building2 } from 'lucide-react';
 
+// Locale-stable currency formatter.
+// toLocaleString() without an explicit locale uses the runtime default, which
+// differs between the Node server and the browser (e.g. "11.035" vs "11,035").
+// That mismatch breaks React hydration, so always pin 'en-US' here.
+const formatCurrency = (value: number) => `$${value.toLocaleString('en-US')}`;
+
 // Mock Cashflow Trajectory
 const cashflowData = [
   { day: 'Sep 1', spend: 85, budget: 120 },
@@ -340,10 +346,10 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="text-3xl font-bold tabular-nums text-white mt-1">
-              ${safeToSpend.toLocaleString()}
+              {formatCurrency(safeToSpend)}
             </div>
             <p className="text-[11px] text-slate-400 mt-2">
-              Free to spend without encroaching on your ${monthlySavingsTarget.toLocaleString()} savings goal.
+              Free to spend without encroaching on your {formatCurrency(monthlySavingsTarget)} savings goal.
             </p>
           </div>
 
@@ -357,7 +363,7 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="text-3xl font-bold tabular-nums text-white mt-1">
-              ${liquidBalance.toLocaleString()}
+              {formatCurrency(liquidBalance)}
             </div>
             <div className="flex items-center gap-1 text-xs text-emerald-400 mt-2 font-medium">
               <TrendingUp className="w-3.5 h-3.5" />
@@ -372,7 +378,7 @@ export default function DashboardPage() {
               <span className="text-slate-400">Pace: 39%</span>
             </div>
             <div className="text-3xl font-bold tabular-nums text-white mt-1">
-              ${monthlySpent.toLocaleString()}
+              {formatCurrency(monthlySpent)}
             </div>
             <div className="mt-2.5">
               <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
@@ -382,8 +388,8 @@ export default function DashboardPage() {
                 />
               </div>
               <div className="flex justify-between text-[10px] text-slate-400 mt-1">
-                <span>Inflow: ${monthlyIncome.toLocaleString()}</span>
-                <span>Target: ${monthlySavingsTarget.toLocaleString()}</span>
+                <span>Inflow: {formatCurrency(monthlyIncome)}</span>
+                                <span>Target: {formatCurrency(monthlySavingsTarget)}</span>
               </div>
             </div>
           </div>
