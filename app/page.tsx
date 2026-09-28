@@ -257,7 +257,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Global Action Controls */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-1.5 sm:gap-2.5">
           <button
             onClick={() => setIsQuickCaptureOpen(true)}
             className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-slate-300 transition"
@@ -265,6 +265,15 @@ export default function DashboardPage() {
             <Search className="w-3.5 h-3.5 text-slate-400" />
             <span>Quick Log</span>
             <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-slate-400">⌘K</kbd>
+          </button>
+
+          <button
+            onClick={() => setIsBankConnectOpen(true)}
+            className="flex sm:hidden items-center justify-center w-11 h-11 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 transition"
+            title="Connect a bank account"
+            aria-label="Connect a bank account"
+          >
+            <Building2 className="w-4 h-4 text-blue-400" />
           </button>
 
           <button
@@ -549,7 +558,10 @@ export default function DashboardPage() {
         </div>
 
         {/* Phase 2: AI Recurring Subscriptions Detector */}
-        <SubscriptionsPanel institutionIds={connectedInstitutions} />
+        <SubscriptionsPanel
+          institutionIds={connectedInstitutions}
+          onConnectBank={() => setIsBankConnectOpen(true)}
+        />
 
       </main>
 

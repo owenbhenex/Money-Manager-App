@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   DollarSign,
   CalendarClock,
+  Plug,
 } from 'lucide-react';
 
 interface Subscription {
@@ -21,6 +22,7 @@ interface Subscription {
 
 interface SubscriptionsPanelProps {
   institutionIds: string[];
+  onConnectBank?: () => void;
 }
 
 const CYCLE_LABEL: Record<string, string> = {
@@ -46,7 +48,7 @@ const CATEGORY_COLOR: Record<string, string> = {
  * Analyzes synced bank transactions to surface recurring charges and
  * actionable cancellation advice.
  */
-export function SubscriptionsPanel({ institutionIds }: SubscriptionsPanelProps) {
+export function SubscriptionsPanel({ institutionIds, onConnectBank }: SubscriptionsPanelProps) {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [monthlyTotal, setMonthlyTotal] = useState(0);
   const [isDetecting, setIsDetecting] = useState(false);
@@ -110,6 +112,15 @@ export function SubscriptionsPanel({ institutionIds }: SubscriptionsPanelProps) 
           <p className="text-xs text-slate-400">
             Connect a bank account to enable subscription detection.
           </p>
+          {onConnectBank && (
+            <button
+              onClick={onConnectBank}
+              className="mt-3 inline-flex items-center justify-center gap-2 px-4 min-h-[44px] rounded-xl bg-fuchsia-600/20 hover:bg-fuchsia-600/30 border border-fuchsia-500/40 text-fuchsia-300 text-xs font-semibold transition"
+            >
+              <Plug className="w-3.5 h-3.5" />
+              Connect a bank
+            </button>
+          )}
         </div>
       )}
 

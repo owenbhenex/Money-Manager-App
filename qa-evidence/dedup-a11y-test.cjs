@@ -4,7 +4,7 @@ const { chromium } = require('playwright-core');
 
 const EXE =
   'C:/Users/owenb/AppData/Local/ms-playwright/chromium-1234/chrome-win64/chrome.exe';
-const BASE = 'http://localhost:3100';
+const BASE = 'http://localhost:3200';
 const OUT = 'qa-evidence/2026-09-28';
 
 const results = [];

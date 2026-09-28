@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SANDBOX_INSTITUTIONS, fetchSandboxTransactions, getInstitution } from '@/lib/bank/sandbox';
+import { parseJsonBody, badRequest } from '@/lib/api/body';
+
+interface ConnectBody {
+  institution_id?: unknown;
+}
 
 /**
  * GET /api/bank/connect/institutions
@@ -26,13 +31,14 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { institution_id } = await req.json();
+    const body = await parseJsonBody<ConnectBody>(req);
+    if (body === null) {
+      return badRequest('Invalid JSON body');
+    }
+    const { institution_id } = body;
 
     if (!institution_id || typeof institution_id !== 'string') {
-      return NextResponse.json(
-        { success: false, error: 'institution_id is required' },
-        { status: 400 }
-      );
+      return badRequest('institution_id is required');
     }
 
     const institution = getInstitution(institution_id);

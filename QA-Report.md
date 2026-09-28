@@ -1,5 +1,5 @@
 # QA Report - Lumina Money @ b76af41 (Phase 2)   2026-09-28
-Recommendation: GO WITH CONDITIONS — all P0 journeys pass (dashboard, bank connect + sync + dedup, AI subscription detection, live Gemini quick-capture and copilot); the two findings are a minor API error-hygiene issue and a Major mobile reachability gap that blocks Phase 2 on phones only.
+Recommendation: GO — both findings fixed and verified; full regression pass 9/9 + dedup/a11y 5/5 after fixes. (Initial pass: GO WITH CONDITIONS.)
 
 ## Coverage
 Approach/tier used: A + B (real Chromium 1234 driven via playwright-core, plus curl for API-level tests; live Gemini 2.5 Flash key active)
@@ -47,3 +47,24 @@ Evidence: qa-evidence/2026-09-28/ (7 screenshots, ui-results.json, dedup-a11y-re
 3. Re-run the two failed cases + a quick regression of TC-UI-003..008 after fixes
 4. Automate the UI suite as a committed `npm run test:e2e` script (playwright-core is external to this repo — vendor it as a devDependency)
 5. Future: receipt/voice fixture tests, cross-browser via Playwright projects, real Supabase RLS verification when auth lands
+
+---
+
+# Retest Report (after fixes)   2026-09-28
+
+## Fixes applied
+1. BUG-001 -> lib/api/body.ts (parseJsonBody + badRequest); applied to all 3 POST routes.
+2. BUG-002 -> icon-only header button (44x44) below 640px + "Connect a bank" CTA inside SubscriptionsPanel empty state (onConnectBank prop).
+3. Follow-on: mobile header overflow (3px) from the new button fixed via gap-1.5 sm:gap-2.5 (caught by regression, not a reported bug).
+
+## Retest results
+| BUG-001 | malformed JSON -> 400 {"error":"Invalid JSON body"} on all 3 routes | FIXED |
+| BUG-002 | Connect Bank visible at 375px + panel CTA opens modal | FIXED |
+| Regression (P0 UI suite) | 9/9 PASS incl. no horizontal scroll at 375px | GREEN |
+| Dedup + a11y suite | 5/5 PASS (no behavior change) | GREEN |
+| Build | npm run build passes, 5 routes | GREEN |
+| Lint | new/changed files 0 errors (copilot route's pre-existing 12 errors unchanged, `as any` tool-decl casts are Phase 1) | GREEN |
+
+Note: /api/subscriptions/detect retest hit Gemini 429 (free-tier quota exhausted during testing) — upstream quota, not a code defect; the route was verified working earlier this session and its error path now returns the clean generic JSON.
+
+Final recommendation: GO.

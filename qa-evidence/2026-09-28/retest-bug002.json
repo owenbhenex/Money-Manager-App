@@ -1,0 +1,23 @@
+[
+  {
+    "id": "TC-UI-012-RT",
+    "area": "Responsive",
+    "priority": "P1",
+    "status": "PASS",
+    "detail": "Connect Bank visible at 375px: true"
+  },
+  {
+    "id": "TC-UI-012-CTA",
+    "area": "Responsive",
+    "priority": "P2",
+    "status": "PASS",
+    "detail": "Panel CTA opens modal on mobile: true"
+  },
+  {
+    "id": "TC-UI-012-DSK",
+    "area": "Responsive",
+    "priority": "P2",
+    "status": "INFO",
+    "detail": "desktop: 1 Connect-a-bank affordances (header+panel)"
+  }
+]

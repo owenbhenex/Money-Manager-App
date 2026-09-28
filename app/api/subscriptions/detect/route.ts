@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ai } from '@/lib/ai/gemini';
-import { fetchSandboxTransactions } from '@/lib/bank/sandbox';
-import { SandboxTransaction } from '@/lib/bank/sandbox';
+import { fetchSandboxTransactions, SandboxTransaction } from '@/lib/bank/sandbox';
+import { parseJsonBody, badRequest } from '@/lib/api/body';
 
 /**
  * Recurring Subscriptions Detector — Phase 2.
@@ -18,6 +18,11 @@ interface DetectedSubscription {
   billing_cycle: 'monthly' | 'annual' | 'weekly';
   confidence: number;
   cancellation_tip: string;
+}
+
+interface DetectBody {
+  transactions?: SandboxTransaction[];
+  institution_ids?: string[];
 }
 
 const SUBSCRIPTION_DETECTOR_PROMPT = `
@@ -47,7 +52,10 @@ JSON shape:
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const body = await parseJsonBody<DetectBody>(req);
+    if (body === null) {
+      return badRequest('Invalid JSON body');
+    }
     // Accept either a list of institutions or raw transactions.
     let transactions: SandboxTransaction[] = body.transactions ?? [];
     if (body.institution_ids && Array.isArray(body.institution_ids)) {

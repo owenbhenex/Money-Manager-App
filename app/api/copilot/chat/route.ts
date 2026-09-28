@@ -1,5 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ai } from '@/lib/ai/gemini';
+import { parseJsonBody, badRequest } from '@/lib/api/body';
+
+interface CopilotFinancialContext {
+  currency?: string;
+  monthlyIncome?: number;
+  monthlySavingsTarget?: number;
+  monthlySpent?: number;
+  liquidBalance?: number;
+  safeToSpend?: number;
+  categories?: string[];
+}
+
+interface CopilotBody {
+  messages?: Array<{ role?: string; content?: string }>;
+  financialContext?: CopilotFinancialContext;
+}
 
 export const COPILOT_SYSTEM_INSTRUCTION = `
 You are Lumina, an intelligent and trusted personal financial advisor copilot.
@@ -15,7 +31,11 @@ Key Directives:
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, financialContext } = await req.json();
+    const body = await parseJsonBody<CopilotBody>(req);
+    if (body === null) {
+      return badRequest('Invalid JSON body');
+    }
+    const { messages = [], financialContext } = body;
 
     const systemPromptWithContext = `
 ${COPILOT_SYSTEM_INSTRUCTION}
@@ -65,7 +85,7 @@ User Financial Context:
 ${systemPromptWithContext}
 
 Recent Conversation:
-${messages.map((m: any) => `${m.role.toUpperCase()}: ${m.content}`).join('\n')}
+${messages.map((m) => `${String(m.role ?? 'USER').toUpperCase()}: ${m.content ?? ''}`).join('\n')}
 
 User: ${lastMessage?.content || 'Hello'}
 `,
@@ -78,7 +98,7 @@ User: ${lastMessage?.content || 'Hello'}
 
     const candidates = response.candidates || [];
     const firstCandidate = candidates[0];
-    const functionCalls = firstCandidate?.content?.parts?.filter((p: any) => p.functionCall);
+    const functionCalls = firstCandidate?.content?.parts?.filter((p: { functionCall?: unknown }) => p.functionCall);
 
     let createdRule = null;
     if (functionCalls && functionCalls.length > 0) {
@@ -99,13 +119,14 @@ User: ${lastMessage?.content || 'Hello'}
       reply: replyText,
       createdRule,
     });
-  } catch (error: any) {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Copilot request failed';
     console.error('Copilot API error:', error);
     return NextResponse.json(
       {
         success: false,
         reply: "I'm having trouble analyzing your request right now. Please check your Gemini API key or try again in a moment.",
-        error: error.message,
+        error: message,
       },
       { status: 500 }
     );

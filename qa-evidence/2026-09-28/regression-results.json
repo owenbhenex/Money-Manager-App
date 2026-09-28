@@ -1,0 +1,65 @@
+[
+  {
+    "id": "TC-UI-001",
+    "area": "Smoke",
+    "priority": "P0",
+    "status": "PASS",
+    "detail": "Dashboard renders"
+  },
+  {
+    "id": "TC-UI-003",
+    "area": "Bank",
+    "priority": "P0",
+    "status": "PASS",
+    "detail": "Institutions listed in modal"
+  },
+  {
+    "id": "TC-UI-004",
+    "area": "Bank",
+    "priority": "P0",
+    "status": "PASS",
+    "detail": "Chase connected 6 txns"
+  },
+  {
+    "id": "TC-UI-005",
+    "area": "Ledger",
+    "priority": "P0",
+    "status": "PASS",
+    "detail": "synced merchants: Spotify Premium, Verizon Wireless, Whole Foods Market"
+  },
+  {
+    "id": "TC-A11Y-001",
+    "area": "A11y",
+    "priority": "P1",
+    "status": "PASS",
+    "detail": "FAB 56x56"
+  },
+  {
+    "id": "TC-A11Y-004",
+    "area": "A11y",
+    "priority": "P1",
+    "status": "PASS",
+    "detail": "Esc closed modal (true->false)"
+  },
+  {
+    "id": "TC-UI-011",
+    "area": "Responsive",
+    "priority": "P2",
+    "status": "PASS",
+    "detail": "no horizontal scroll at 375px"
+  },
+  {
+    "id": "TC-UI-009",
+    "area": "Health",
+    "priority": "P1",
+    "status": "PASS",
+    "detail": "failed requests: none"
+  },
+  {
+    "id": "TC-UI-010",
+    "area": "Health",
+    "priority": "P1",
+    "status": "PASS",
+    "detail": "console errors: none"
+  }
+]
