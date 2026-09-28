@@ -1,0 +1,128 @@
+@import "tailwindcss";
+
+:root {
+  /* Canvas & Surfaces (OLED Deep Slate) */
+  --background: #0A0E27;
+  --foreground: #F8FAFC;
+  --surface-base: #0F172A;
+  --surface-card: rgba(255, 255, 255, 0.04);
+  --surface-card-hover: rgba(255, 255, 255, 0.08);
+  --surface-modal: #131B38;
+  --surface-drawer: #0D132D;
+
+  /* Text & Foreground */
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  --text-inverted: #0A0E27;
+
+  /* Brand & Core Actions */
+  --primary: #3B82F6;
+  --primary-dark: #1E40AF;
+  --primary-foreground: #FFFFFF;
+
+  /* AI Copilot Identity */
+  --ai-accent: #6366F1;
+  --ai-glow: rgba(99, 102, 241, 0.25);
+  --ai-surface: rgba(99, 102, 241, 0.08);
+
+  /* Semantic Financial States */
+  --success: #10B981;
+  --success-bg: rgba(16, 185, 129, 0.12);
+  --warning: #F59E0B;
+  --warning-bg: rgba(245, 158, 11, 0.12);
+  --destructive: #EF4444;
+  --destructive-bg: rgba(239, 68, 68, 0.12);
+
+  /* Borders & Dividers */
+  --border-glass: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 255, 255, 0.04);
+  --border-active: rgba(59, 130, 246, 0.50);
+  --border-ai: rgba(99, 102, 241, 0.40);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--text-primary);
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Tabular figures for all financial values to avoid number jitter */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-ibm-plex), monospace;
+}
+
+/* Glassmorphism Surface Utilities */
+.glass-card {
+  background: var(--surface-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-glass);
+}
+
+.glass-card-hover {
+  transition: all 180ms ease-out;
+}
+
+@media (hover: hover) {
+  .glass-card-hover:hover {
+    background: var(--surface-card-hover);
+    border-color: rgba(255, 255, 255, 0.15);
+    transform: translateY(-1px);
+  }
+}
+
+.glass-modal {
+  background: rgba(19, 27, 56, 0.88);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 16px 48px 0 rgba(0, 0, 0, 0.6);
+}
+
+.glass-drawer {
+  background: var(--surface-drawer);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-left: 1px solid var(--border-glass);
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.5);
+}
+
+/* Pulse animation for AI streaming states */
+@keyframes ai-pulse {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(0.98);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+.animate-ai-pulse {
+  animation: ai-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Custom Scrollbar for Sleek Dark OLED Look */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
