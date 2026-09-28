@@ -28,7 +28,10 @@ import {
 import { QuickCaptureModal } from '@/components/quick-capture/QuickCaptureModal';
 import { CopilotDrawer } from '@/components/copilot/CopilotDrawer';
 import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard';
+import { BankConnectModal } from '@/components/bank/BankConnectModal';
+import { SubscriptionsPanel } from '@/components/subscriptions/SubscriptionsPanel';
 import { ExtractedTransaction, Transaction } from '@/types/database.types';
+import { Building2 } from 'lucide-react';
 
 // Mock Cashflow Trajectory
 const cashflowData = [
@@ -54,6 +57,11 @@ export default function DashboardPage() {
   const [isOnboarding, setIsOnboarding] = useState(false);
   const [isQuickCaptureOpen, setIsQuickCaptureOpen] = useState(false);
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
+  const [isBankConnectOpen, setIsBankConnectOpen] = useState(false);
+
+  // Track connected sandbox institutions so the subscriptions detector knows
+  // which transaction streams to analyze.
+  const [connectedInstitutions, setConnectedInstitutions] = useState<string[]>([]);
 
   // Undo Toast state
   const [lastLoggedTx, setLastLoggedTx] = useState<ExtractedTransaction | null>(null);
@@ -191,6 +199,32 @@ export default function DashboardPage() {
     }
   };
 
+  // Phase 2: handle transactions pulled from a sandbox bank connection.
+  // Dedupes by merchant+date+amount and keeps balances in sync.
+  const handleBankTransactionsImported = (newTxs: Transaction[]) => {
+    setTransactions((prev) => {
+      const seen = new Set(prev.map((t) => `${t.merchant}|${t.amount}|${t.date}`));
+      const deduped = newTxs.filter(
+        (t) => !seen.has(`${t.merchant}|${t.amount}|${t.date}`)
+      );
+      // Record which institution these came from (by account_id prefix).
+      const newInsts = deduped
+        .map((t) => (t.account_id || '').replace('bank-', ''))
+        .filter((id, i, arr) => id && arr.indexOf(id) === i);
+      setConnectedInstitutions((prevInsts) => {
+        const merged = [...new Set([...prevInsts, ...newInsts])];
+        return merged;
+      });
+      // Update financial aggregates from the new (expense) transactions.
+      const newSpend = deduped
+        .filter((t) => t.amount < 0)
+        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+      setMonthlySpent((prevSpend) => prevSpend + Math.round(newSpend * 100) / 100);
+      setLiquidBalance((prevBal) => prevBal - Math.round(newSpend * 100) / 100);
+      return [...deduped, ...prev];
+    });
+  };
+
   if (isOnboarding) {
     return (
       <OnboardingWizard
@@ -231,6 +265,15 @@ export default function DashboardPage() {
             <Search className="w-3.5 h-3.5 text-slate-400" />
             <span>Quick Log</span>
             <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-slate-400">⌘K</kbd>
+          </button>
+
+          <button
+            onClick={() => setIsBankConnectOpen(true)}
+            className="hidden sm:flex items-center gap-2 px-3 py-1.5 min-h-[36px] rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-slate-300 transition"
+            title="Connect a bank account"
+          >
+            <Building2 className="w-3.5 h-3.5 text-blue-400" />
+            <span>Connect Bank</span>
           </button>
 
           <button
@@ -505,6 +548,9 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* Phase 2: AI Recurring Subscriptions Detector */}
+        <SubscriptionsPanel institutionIds={connectedInstitutions} />
+
       </main>
 
       {/* 6. Undo Notification Toast */}
@@ -550,6 +596,13 @@ export default function DashboardPage() {
           safeToSpend,
           categories: categoryData.map((c) => c.name),
         }}
+      />
+
+      {/* Phase 2: Bank Connect Modal */}
+      <BankConnectModal
+        isOpen={isBankConnectOpen}
+        onClose={() => setIsBankConnectOpen(false)}
+        onTransactionsImported={handleBankTransactionsImported}
       />
 
     </div>
