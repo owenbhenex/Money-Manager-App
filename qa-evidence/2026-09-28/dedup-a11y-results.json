@@ -1,0 +1,37 @@
+[
+  {
+    "id": "TC-DEDUP-001",
+    "area": "Dedup",
+    "priority": "P1",
+    "status": "PASS",
+    "detail": "re-link did not duplicate (Spotify 1→1, Verizon 1→1)"
+  },
+  {
+    "id": "TC-DEDUP-002",
+    "area": "Dedup",
+    "priority": "P2",
+    "status": "PASS",
+    "detail": "second institution linked (spotify count stable at 2); no dupes"
+  },
+  {
+    "id": "TC-A11Y-001",
+    "area": "A11y",
+    "priority": "P1",
+    "status": "PASS",
+    "detail": "FAB size 56x56 (need >=44)"
+  },
+  {
+    "id": "TC-A11Y-002",
+    "area": "A11y",
+    "priority": "P1",
+    "status": "PASS",
+    "detail": "Detect button 90x44 (need >=44)"
+  },
+  {
+    "id": "TC-A11Y-004",
+    "area": "A11y",
+    "priority": "P1",
+    "status": "PASS",
+    "detail": "modal closed via Esc (true -> false)"
+  }
+]

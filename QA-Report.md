@@ -1,64 +1,49 @@
-# End-to-End QA Report - Lumina Money (MVP v0.1.0)
-**Date:** September 28, 2026  
-**Tester:** Antigravity AI QA Engine (`e2e-qa-testing` skill)  
-**Environment:** `http://localhost:3000` (Next.js 15, Turbopack, Node 20)  
-**AI Engine:** Google Gemini 2.5 Flash API (Configured & Live)  
-**Recommendation:** **GO WITH CONDITIONS** (Application logic, live AI extraction, conversational Copilot, and dashboard are fully functional; manual browser verification recommended due to headless driver network constraints).
+# QA Report - Lumina Money @ b76af41 (Phase 2)   2026-09-28
+Recommendation: GO WITH CONDITIONS — all P0 journeys pass (dashboard, bank connect + sync + dedup, AI subscription detection, live Gemini quick-capture and copilot); the two findings are a minor API error-hygiene issue and a Major mobile reachability gap that blocks Phase 2 on phones only.
 
----
+## Coverage
+Approach/tier used: A + B (real Chromium 1234 driven via playwright-core, plus curl for API-level tests; live Gemini 2.5 Flash key active)
+Tested: dashboard smoke, bank institution listing/link/sync (all 4 institutions), transaction dedup on re-link, second-institution link, AI recurring-subscription detection (deterministic + consistent across runs, raw-transaction payload mode), quick-capture text extraction, copilot grounded advisory, error paths (invalid/missing/wrong-type/malformed payloads), console/network health on every page state, mobile 375px layout, touch-target sizes (FAB, Detect, modal rows), Esc-to-close modal.
+Not tested: voice memo and receipt OCR upload paths (would need audio/image fixtures + mics), Copilot drawer UI interaction (API only), Supabase auth/RLS (app is mock-data, no live DB), cross-browser (Chromium only — no Firefox/WebKit binaries on this machine), CSV import (`/api/import/csv` from docs not yet implemented), onboarding wizard walkthrough (pre-existing Phase 1 UI, unchanged this phase).
 
-## 1. Executive Summary
+## Results
+| Status | Count | Notes |
+| PASS   | 21    | |
+| FAIL   | 2     | BUG-001, BUG-002 |
+| INFO   | 1     | baseline ledger render |
+| BLOCKED/NOT RUN | 0 (in-scope) | 6 areas out of scope as listed above |
 
-| Category | Status | Notes |
-| :--- | :---: | :--- |
-| **Smoke & Server Health** | **PASS** | HTTP 200, clean React 19 SSR HTML tree, zero hydration crashes. |
-| **AI Quick Capture Engine** | **PASS** | Extracted `$18.25`, merchant `Sweetgreen`, category `Food & Dining`, and confidence `0.95`. Negative empty inputs rejected with HTTP 400. |
-| **Conversational Copilot** | **PASS** | Grounded financial reasoning and conversational spending rule generation via Gemini Function Calling (`create_spending_rule`). |
-| **Design System & Tokens** | **PASS** | Dark OLED Glassmorphic tokens, IBM Plex Sans & Inter fonts, and responsive layout classes configured. |
-| **Browser Runner Environment** | **CONDITION** | Automated subagent browser runner encountered an upstream Playwright driver binary 404 in the sandbox. Tier B live integration tests were executed in place. |
+Highlights (see qa-evidence/2026-09-28/ui-results.json + dedup-a11y-results.json for full detail):
+- TC-UI-004/005 PASS: Chase link -> 6 txns synced -> merchants visible in ledger
+- TC-DEDUP-001 PASS: re-linking same bank adds ZERO duplicates (Spotify 1->1, Verizon 1->1)
+- TC-UI-008 PASS: AI detection found Spotify/iCloud/Verizon at $99.98/mo with cancel tips
+- TC-SMOKE-002/003 PASS: live Gemini extraction (Starbucks $5.75, conf 0.95) + grounded copilot math
+- TC-A11Y PASS: FAB 56x56, Detect 90x44, Esc closes modal; 375px no horizontal scroll
 
----
+## Defects
+| Severity | Count | IDs |
+| Critical/Blocker | 0 | |
+| Major | 1 | BUG-002 (Connect Bank hidden <640px -> Phase 2 unreachable on mobile) |
+| Minor | 1 | BUG-001 (malformed JSON -> 500 + parser message leak on all 3 POST routes) |
 
-## 2. Test Execution Matrix
+Top issues:
+- BUG-002: mobile users cannot reach bank sync or subscriptions at all (no alternate entry)
+- BUG-001: all POST routes leak V8 parser internals on invalid JSON; should be 400 + generic message
 
-| Test ID | Area / Feature | Priority | Steps / Scenario | Expected Result | Status | Observed Evidence |
-| :--- | :--- | :---: | :--- | :--- | :---: | :--- |
-| **TC-SMOKE-001** | Dashboard Root | **P0** | GET `http://localhost:3000/` | HTTP 200, HTML contains app shell, fonts, branding | **PASS** | Status 200, `Lumina` branding present in rendered markup. |
-| **TC-QC-001** | Quick Capture AI Text Extraction | **P0** | POST `/api/quick-capture` with natural language expense phrase | Gemini extracts merchant, amount, category, confidence | **PASS** | `{"amount":18.25, "merchant":"Sweetgreen", "category":"Food & Dining", "confidence":0.95}` |
-| **TC-QC-002** | Quick Capture Empty Input Validation | **P1** | POST `/api/quick-capture` with empty text and no file | HTTP 400 validation error rejected cleanly | **PASS** | HTTP 400 `{"success":false, "error":"No text or file provided"}` |
-| **TC-COPILOT-001** | Copilot Conversational Advisory | **P0** | POST `/api/copilot/chat` with financial context & budget query | Grounded advice returned without hallucinations | **PASS** | HTTP 200 with 269-character contextual advisory response. |
-| **TC-COPILOT-002** | Conversational Rule Creation | **P0** | POST `/api/copilot/chat` with instruction: *"Categorize Chevron as Transportation"* | Gemini Function Calling triggers `create_spending_rule` | **PASS** | `{"rule_name":"Categorize Chevron as Transportation", "category_name":"Transportation", "merchant":"Chevron"}` |
+## Risks & observations
+- API latency: Gemini quick-capture ~1-2s, subscription detection ~3-5s — acceptable but the Detect button shows no result-timeout guard; if Gemini fails the panel surfaces the error string (verified error path returns clean JSON).
+- Sandbox determinism is intentional (stable tests) but means every user sees the same "bank data".
+- Copilot route returns createdRule payload to client but nothing persists it (mock-data app; known Phase 1 state, reconfirmed).
+- CopilotDrawer still contains unused-import lint warnings (pre-existing, not regressed by Phase 2).
+- `.env` NOT tracked in git (verified), no secrets in client bundle observed in network capture.
 
----
+## Environment
+http://localhost:3100 (next dev, Turbopack), Node v22.23.1, commit b76af41, Chromium 1234 headless (playwright-core from taskflow-dashboard/node_modules), Windows 11.
+Evidence: qa-evidence/2026-09-28/ (7 screenshots, ui-results.json, dedup-a11y-results.json, bugs/BUG-001.md, BUG-002.md)
 
-## 3. Coverage Details
-* **Approach / Tier Used:** **Tier B (Live Automated Shell + Integration Test Execution)** paired with **Tier A Browser Agent attempt**.
-* **Features Tested:**
-  * Root dashboard rendering and Dark OLED theme tokens.
-  * Live Google Gemini 2.5 Flash integration with API key in `.env`.
-  * Natural language transaction entity extraction.
-  * Boundary validation on missing payloads.
-  * Copilot advisory streaming endpoint.
-  * Function Calling schema and rule commitment payload.
-* **Not Tested via Browser UI Driver:**
-  * Direct browser pointer clicks in Chrome/Edge, due to the Playwright driver binary 404 download issue in the container.
-
----
-
-## 4. Risks & Observations
-
-1. **Browser Subagent Driver Issue:**
-   * When invoking `browser_subagent`, the internal Playwright runner attempted to download `playwright-1.57.0-win32_x64.zip` from AzureEdge CDN, which returned HTTP 404. This is an environment-level dependency issue outside the application code.
-   * **Workaround:** The application is running live at `http://localhost:3000`. You can open your standard browser (Chrome, Edge, Brave) to click through and experience the UI directly.
-2. **API Latency:**
-   * Gemini 2.5 Flash response times averaged between **1.2s and 2.1s** for multimodal parsing and function calling, well within the target threshold (<3s).
-
----
-
-## 5. Next Steps & Recommendations
-
-1. **Manual Visual Smoke:** Open [http://localhost:3000](http://localhost:3000) in your browser:
-   * Try typing in the Quick Capture modal (`Cmd/Ctrl + K` or bottom FAB).
-   * Open the Copilot drawer and try asking: *"Can I afford a $150 dinner tonight?"*
-   * Try telling the Copilot: *"Set a rule for Uber to Transportation"*.
-2. **Phase 2 Expansion:** Proceed with CSV bank file ingestion and Supabase Auth session persistence.
+## Next steps
+1. Fix BUG-002 (mobile entrypoint for bank sync; suggest CTA inside SubscriptionsPanel when empty + un-hide header button as icon-only on <sm)
+2. Fix BUG-001 (shared safe-parse helper → 400 on bad JSON across all 3 routes)
+3. Re-run the two failed cases + a quick regression of TC-UI-003..008 after fixes
+4. Automate the UI suite as a committed `npm run test:e2e` script (playwright-core is external to this repo — vendor it as a devDependency)
+5. Future: receipt/voice fixture tests, cross-browser via Playwright projects, real Supabase RLS verification when auth lands

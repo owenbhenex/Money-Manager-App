@@ -1,0 +1,86 @@
+[
+  {
+    "id": "TC-UI-001",
+    "area": "Smoke",
+    "priority": "P0",
+    "status": "PASS",
+    "detail": "Dashboard renders Lumina shell + Safe-to-Spend"
+  },
+  {
+    "id": "TC-UI-002",
+    "area": "Ledger",
+    "priority": "P1",
+    "status": "INFO",
+    "detail": "rendered 98 text lines before sync"
+  },
+  {
+    "id": "TC-UI-003",
+    "area": "Bank",
+    "priority": "P0",
+    "status": "PASS",
+    "detail": "Modal open, institutions listed (Chase visible)"
+  },
+  {
+    "id": "TC-UI-004",
+    "area": "Bank",
+    "priority": "P0",
+    "status": "PASS",
+    "detail": "Chase connected, 6 txns synced"
+  },
+  {
+    "id": "TC-UI-005",
+    "area": "Ledger",
+    "priority": "P0",
+    "status": "PASS",
+    "detail": "Synced txns visible in ledger: Spotify Premium, Verizon Wireless, Whole Foods Market"
+  },
+  {
+    "id": "TC-UI-006",
+    "area": "Subscriptions",
+    "priority": "P1",
+    "status": "PASS",
+    "detail": "Subscriptions panel rendered"
+  },
+  {
+    "id": "TC-UI-007",
+    "area": "Subscriptions",
+    "priority": "P1",
+    "status": "PASS",
+    "detail": "Detect button enabled after bank connect"
+  },
+  {
+    "id": "TC-UI-008",
+    "area": "Subscriptions",
+    "priority": "P0",
+    "status": "PASS",
+    "detail": "Detection rendered cards: Spotify Premium, Verizon Wireless, iCloud Storage"
+  },
+  {
+    "id": "TC-UI-009",
+    "area": "Health",
+    "priority": "P1",
+    "status": "PASS",
+    "detail": "failed requests: none"
+  },
+  {
+    "id": "TC-UI-010",
+    "area": "Health",
+    "priority": "P1",
+    "status": "PASS",
+    "detail": "console errors: none"
+  },
+  {
+    "id": "TC-UI-011",
+    "area": "Responsive",
+    "priority": "P2",
+    "status": "PASS",
+    "detail": "375px width horizontal scroll: false"
+  },
+  {
+    "id": "TC-UI-012",
+    "area": "Responsive",
+    "priority": "P2",
+    "status": "FAIL",
+    "detail": "Connect Bank visible on mobile 375px: false"
+  }
+]
