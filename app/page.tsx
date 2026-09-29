@@ -34,6 +34,7 @@ import { SubscriptionsPanel } from "@/components/subscriptions/SubscriptionsPane
 import { ExtractedTransaction, Transaction } from "@/types/database.types";
 import { Building2, Upload } from "lucide-react";
 import { CsvImportModal } from "@/components/import/CsvImportModal";
+import { AddTransactionModal } from "@/components/transactions/AddTransactionModal";
 import { evaluateBatch, type Rule, type RuleInput } from "@/lib/rules/engine";
 import { useFinancialData } from "@/lib/hooks/useFinancialData";
 
@@ -51,6 +52,18 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   IDR: "Rp",
   SGD: "S$",
 };
+const defaultCategories = [
+  "Food & Dining",
+  "Transportation",
+  "Groceries",
+  "Housing & Utilities",
+  "Entertainment",
+  "Healthcare",
+  "Personal Care",
+  "Income",
+  "Other",
+];
+
 const formatCurrency = (value: number, currencyCode = "USD") =>
   `${CURRENCY_SYMBOLS[currencyCode] ?? "$"}${value.toLocaleString("en-US")}`;
 
@@ -94,6 +107,7 @@ export default function DashboardPage() {
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
   const [isBankConnectOpen, setIsBankConnectOpen] = useState(false);
   const [isCsvImportOpen, setIsCsvImportOpen] = useState(false);
+  const [isAddTxOpen, setIsAddTxOpen] = useState(false);
 
   // Conversational rules created via Copilot function calling
   const [rules, setRules] = useState<Rule[]>([]);
@@ -309,6 +323,24 @@ export default function DashboardPage() {
     },
   ]);
 
+  // Income vs Expenses — derived from this month's transactions when the user
+  // has real data, otherwise from the demo figures.
+  const nowMonth = new Date().toISOString().slice(0, 7);
+  const incomeTx = transactions.filter(
+    (t) => t.amount > 0 && (t.date ?? "").startsWith(nowMonth),
+  );
+  const expenseTx = transactions.filter(
+    (t) => t.amount < 0 && (t.date ?? "").startsWith(nowMonth),
+  );
+  const realIncome = incomeTx.reduce((s, t) => s + t.amount, 0);
+  const realExpenses = expenseTx.reduce((s, t) => s + Math.abs(t.amount), 0);
+  const hasRealTx = transactions.length > 0;
+
+  const incomeTotal = realIncome > 0 ? realIncome : monthlyIncome;
+  const expenseTotal = realExpenses > 0 ? realExpenses : monthlySpent;
+  const netSavings = incomeTotal - expenseTotal;
+  const savingsRate = incomeTotal > 0 ? (netSavings / incomeTotal) * 100 : 0;
+
   // Ledger search
   const [ledgerSearch, setLedgerSearch] = useState("");
   const q = ledgerSearch.trim().toLowerCase();
@@ -321,6 +353,84 @@ export default function DashboardPage() {
           (qNum && String(Math.abs(t.amount)).includes(qNum)),
       )
     : transactions;
+
+  // Handle manual Add Transaction (income or expense)
+  const handleAddTransaction = async (tx: {
+    type: "income" | "expense";
+    merchant: string;
+    amount: number;
+    date: string;
+    category_name: string | null;
+    account_id: string | null;
+    notes: string | null;
+  }) => {
+    const signed =
+      tx.type === "income" ? Math.abs(tx.amount) : -Math.abs(tx.amount);
+
+    if (isAuthenticated) {
+      const res = await fetch("/api/transactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          merchant: tx.merchant,
+          amount: signed,
+          date: tx.date,
+          category_name: tx.category_name,
+          account_id: tx.account_id,
+          notes: tx.notes,
+          capture_method: "manual",
+          currency,
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || "Could not save");
+      const saved = json.transaction as Transaction;
+      setTransactions((prev) => [saved, ...prev]);
+      applyTxToTotals(saved);
+      return;
+    }
+
+    // Demo mode
+    const newTx: Transaction = {
+      id: `tx-${Date.now()}`,
+      user_id: "user-1",
+      account_id: tx.account_id,
+      category_id: null,
+      amount: signed,
+      currency,
+      date: tx.date,
+      merchant: tx.merchant,
+      notes: tx.notes,
+      capture_method: "manual",
+      ai_confidence: null,
+      receipt_url: null,
+      status: "confirmed",
+      created_at: new Date().toISOString(),
+      category: {
+        id: "cat-new",
+        user_id: "user-1",
+        name: tx.category_name ?? "Other",
+        icon: "tag",
+        color: "#3B82F6",
+        monthly_budget: null,
+        is_system: false,
+        created_at: "",
+      },
+    };
+    setTransactions((prev) => [newTx, ...prev]);
+    applyTxToTotals(newTx);
+  };
+
+  // Apply a saved transaction to the running totals (burn rate + liquid balance)
+  const applyTxToTotals = (t: Transaction) => {
+    if (t.amount < 0) {
+      setMonthlySpent((prev) => prev + Math.abs(t.amount));
+      setLiquidBalance((prev) => prev + t.amount);
+    } else {
+      setMonthlyIncome((prev) => prev + t.amount);
+      setLiquidBalance((prev) => prev + t.amount);
+    }
+  };
 
   // Handle Quick Capture Save
   const handleTransactionSaved = async (extracted: ExtractedTransaction) => {
@@ -807,6 +917,110 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* 3c. Income vs Expenses */}
+        <div className="glass-card rounded-2xl p-5 border border-white/10">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-semibold text-white">
+                Income vs Expenses
+              </h3>
+              <p className="text-xs text-slate-400">
+                Cash flow for{" "}
+                {new Date().toLocaleDateString("en-US", {
+                  month: "long",
+                  year: "numeric",
+                })}
+              </p>
+            </div>
+            <span
+              data-testid="net-savings"
+              className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
+                netSavings >= 0
+                  ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+                  : "text-red-400 bg-red-500/10 border-red-500/20"
+              }`}
+            >
+              {netSavings >= 0 ? "Surplus" : "Deficit"}{" "}
+              {formatCurrency(Math.abs(netSavings), currency)}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-400" />
+                <p className="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold">
+                  Income
+                </p>
+              </div>
+              <p
+                data-testid="income-total"
+                className="text-xl font-bold tabular-nums text-emerald-300"
+              >
+                {formatCurrency(incomeTotal, currency)}
+              </p>
+              <p className="text-[10px] text-slate-500 mt-1">
+                {incomeTx.length} deposit{incomeTx.length === 1 ? "" : "s"}
+              </p>
+            </div>
+
+            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <ArrowUpRight className="w-3.5 h-3.5 text-red-400" />
+                <p className="text-[10px] uppercase tracking-wider text-red-400 font-semibold">
+                  Expenses
+                </p>
+              </div>
+              <p
+                data-testid="expense-total"
+                className="text-xl font-bold tabular-nums text-red-300"
+              >
+                {formatCurrency(expenseTotal, currency)}
+              </p>
+              <p className="text-[10px] text-slate-500 mt-1">
+                {expenseTx.length} charge{expenseTx.length === 1 ? "" : "s"}
+              </p>
+            </div>
+
+            <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10">
+              <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-1.5">
+                Savings Rate
+              </p>
+              <p
+                data-testid="savings-rate"
+                className={`text-xl font-bold tabular-nums ${
+                  savingsRate >= 0 ? "text-white" : "text-red-300"
+                }`}
+              >
+                {savingsRate.toFixed(1)}%
+              </p>
+              <p className="text-[10px] text-slate-500 mt-1">
+                {hasRealTx ? "" : "Demo figures"}
+              </p>
+            </div>
+          </div>
+
+          {/* Net bar */}
+          <div className="mt-4">
+            <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden flex">
+              <div
+                data-testid="income-bar"
+                className="h-full bg-emerald-500 transition-all duration-500"
+                style={{
+                  width: `${Math.min(100, (incomeTotal / (incomeTotal + expenseTotal)) * 100)}%`,
+                }}
+              />
+              <div
+                data-testid="expense-bar"
+                className="h-full bg-red-500 transition-all duration-500"
+                style={{
+                  width: `${Math.min(100, (expenseTotal / (incomeTotal + expenseTotal)) * 100)}%`,
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
         {/* 4. Analytics Visualizers (Recharts) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Cash Flow Trajectory Chart */}
@@ -952,12 +1166,22 @@ export default function DashboardPage() {
                 Real-time ledger with AI auto-categorization
               </p>
             </div>
-            <button
-              onClick={() => setIsQuickCaptureOpen(true)}
-              className="inline-flex items-center justify-center min-h-[44px] px-2 rounded-lg text-xs text-blue-400 hover:text-blue-300 font-medium transition"
-            >
-              + Add Transaction
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setIsAddTxOpen(true)}
+                className="inline-flex items-center justify-center min-h-[44px] px-3 rounded-lg text-xs text-white bg-blue-600 hover:bg-blue-500 font-medium transition"
+              >
+                + Add Transaction
+              </button>
+              <button
+                onClick={() => setIsQuickCaptureOpen(true)}
+                className="inline-flex items-center justify-center min-h-[44px] px-3 rounded-lg text-xs text-indigo-300 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 font-medium transition"
+                title="AI Quick Capture (⌘K)"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline ml-1.5">Quick Capture</span>
+              </button>
+            </div>
           </div>
 
           {/* Search / filter */}
@@ -1099,6 +1323,20 @@ export default function DashboardPage() {
         isOpen={isBankConnectOpen}
         onClose={() => setIsBankConnectOpen(false)}
         onTransactionsImported={handleBankTransactionsImported}
+      />
+
+      {/* Manual Add Transaction (income + expense) */}
+      <AddTransactionModal
+        isOpen={isAddTxOpen}
+        onClose={() => setIsAddTxOpen(false)}
+        onSave={handleAddTransaction}
+        accounts={dbAccounts}
+        categories={
+          dbCategories.length
+            ? dbCategories.map((c: { name: string }) => c.name)
+            : defaultCategories
+        }
+        currency={currency}
       />
     </div>
   );
