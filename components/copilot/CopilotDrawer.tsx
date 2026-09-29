@@ -88,30 +88,66 @@ export function CopilotDrawer({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          question: inputValue,
+          context: financialContext,
           messages: [...messages, userMsg].map((m) => ({
             role: m.role === "user" ? "user" : "model",
-            content: m.content,
+            text: m.content,
           })),
-          financialContext,
         }),
       });
 
-      const data = await res.json();
-      if (data.reply) {
-        const assistantMsg: Message = {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: data.reply,
-          createdRule: data.createdRule,
-        };
-        setMessages((prev) => [...prev, assistantMsg]);
+      if (!res.ok || !res.body) throw new Error("No stream");
 
-        if (data.createdRule && onRuleCreated) {
-          onRuleCreated(data.createdRule);
+      // Read SSE stream: token-by-token text + tool_call events
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      const assistantMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "",
+      };
+      setMessages((prev) => [...prev, assistantMsg]);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const payload = line.slice(6).trim();
+          if (payload === "[DONE]") continue;
+          try {
+            const evt = JSON.parse(payload);
+            if (evt.type === "text" && evt.text) {
+              assistantMsg.content += evt.text;
+              setMessages((prev) => {
+                const next = [...prev];
+                next[next.length - 1] = { ...assistantMsg };
+                return next;
+              });
+            }
+            if (evt.type === "tool_call" && evt.name === "create_rule" && onRuleCreated) {
+              const args = evt.args;
+              onRuleCreated({
+                name: args.name,
+                trigger_condition: { merchant_contains: args.merchant_contains },
+                action: { type: args.action, value: args.category_name },
+                is_active: true,
+              });
+            }
+          } catch {}
         }
       }
     } catch (err) {
       console.error("Failed to query copilot:", err);
+      setMessages((prev) => [
+        ...prev,
+        { id: Date.now().toString(), role: "assistant", content: "Sorry, I couldn't reach the AI service. Please try again." },
+      ]);
     } finally {
       setIsLoading(false);
     }

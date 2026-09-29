@@ -43,3 +43,10 @@ next-env.d.ts
 # QA evidence artifacts
 qa-evidence/*/screenshots
 qa-evidence/**/*.png
+
+# Capacitor mobile build artifacts
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+android/captures/

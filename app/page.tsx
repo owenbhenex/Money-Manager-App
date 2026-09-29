@@ -13,6 +13,7 @@ import {
   RotateCcw,
   Sliders,
   Search,
+  Scale,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -31,7 +32,9 @@ import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
 import { BankConnectModal } from "@/components/bank/BankConnectModal";
 import { SubscriptionsPanel } from "@/components/subscriptions/SubscriptionsPanel";
 import { ExtractedTransaction, Transaction } from "@/types/database.types";
-import { Building2 } from "lucide-react";
+import { Building2, Upload } from "lucide-react";
+import { CsvImportModal } from "@/components/import/CsvImportModal";
+import { evaluateBatch, type Rule, type RuleInput } from "@/lib/rules/engine";
 
 // Locale-stable currency formatter.
 // toLocaleString() without an explicit locale uses the runtime default, which
@@ -75,6 +78,10 @@ export default function DashboardPage() {
   const [isQuickCaptureOpen, setIsQuickCaptureOpen] = useState(false);
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
   const [isBankConnectOpen, setIsBankConnectOpen] = useState(false);
+  const [isCsvImportOpen, setIsCsvImportOpen] = useState(false);
+
+  // Conversational rules created via Copilot function calling
+  const [rules, setRules] = useState<Rule[]>([]);
 
   // Track connected sandbox institutions so the subscriptions detector knows
   // which transaction streams to analyze.
@@ -99,6 +106,33 @@ export default function DashboardPage() {
     0,
     liquidBalance - monthlySavingsTarget - monthlySpent,
   );
+
+  // Net Worth: mock accounts (checking/savings are assets, credit card is a liability).
+  // Liquidity-exact linking happens in the accounts table once Supabase is live.
+  const MOCK_ACCOUNTS = [
+    { name: "Primary Checking", type: "checking", balance: 3500 },
+    { name: "High Yield Savings", type: "savings", balance: 12000 },
+    { name: "Credit Card", type: "credit_card", balance: -450 },
+    { name: "Physical Cash", type: "cash", balance: 150 },
+  ];
+  const totalAssets = MOCK_ACCOUNTS.filter((a) => a.balance > 0).reduce(
+    (s, a) => s + a.balance,
+    0,
+  );
+  const totalLiabilities = Math.abs(
+    MOCK_ACCOUNTS.filter((a) => a.balance < 0).reduce((s, a) => s + a.balance, 0),
+  );
+  const netWorth = totalAssets - totalLiabilities;
+
+  // Budget progress per category (categoryData is the mock September spend)
+  const budgetProgress = categoryData.map((c) => ({
+    name: c.name,
+    spent: c.value,
+    // ponytail: naive even-split budget proxy until real budgets exist in DB.
+    budget: Math.max(c.value, Math.round((c.value / 0.7) * 10) / 10),
+  }));
+
+
 
   // Cmd/Ctrl+K opens Quick Capture — the header displays this shortcut.
   useEffect(() => {
@@ -220,6 +254,19 @@ export default function DashboardPage() {
     },
   ]);
 
+  // Ledger search
+  const [ledgerSearch, setLedgerSearch] = useState("");
+  const q = ledgerSearch.trim().toLowerCase();
+  const qNum = ledgerSearch.replace(/[^0-9.]/g, "");
+  const filteredTransactions = q
+    ? transactions.filter(
+        (t) =>
+          t.merchant.toLowerCase().includes(q) ||
+          (t.category?.name ?? "").toLowerCase().includes(q) ||
+          (qNum && String(Math.abs(t.amount)).includes(qNum)),
+      )
+    : transactions;
+
   // Handle Quick Capture Save
   const handleTransactionSaved = (extracted: ExtractedTransaction) => {
     const newTx: Transaction = {
@@ -273,6 +320,71 @@ export default function DashboardPage() {
 
   // Phase 2: handle transactions pulled from a sandbox bank connection.
   // Dedupes by merchant+date+amount and keeps balances in sync.
+  const handleCsvImport = (rows: { date: string; merchant: string; amount: number; notes?: string }[]) => {
+    // Apply rule engine to categorize/dedupe imports
+    const ruleInputs: RuleInput[] = rows.map((r) => ({
+      id: `csv-${r.date}-${r.merchant}`.toLowerCase().replace(/\s+/g, '-'),
+      merchant: r.merchant,
+      amount: r.amount,
+    }));
+    const results = evaluateBatch(ruleInputs, rules);
+    const overrides = new Map(results.map((r) => [r.txId, r.category ?? '']));
+    setTransactions((prev) => {
+      const csvTxs: Transaction[] = rows.map((r) => ({
+        id: `csv-${r.date}-${r.merchant}`.toLowerCase().replace(/\s+/g, '-'),
+        user_id: 'user-1',
+        account_id: 'acc-1',
+        category_id: 'cat-csv',
+        amount: r.amount,
+        currency,
+        date: r.date,
+        merchant: r.merchant,
+        notes: r.notes || 'Imported via CSV',
+        capture_method: 'csv_import',
+        ai_confidence: 0,
+        receipt_url: null,
+        status: 'confirmed',
+        created_at: new Date().toISOString(),
+        category: {
+          id: 'cat-csv',
+          user_id: 'user-1',
+          name: overrides.get(`csv-${r.date}-${r.merchant}`.toLowerCase().replace(/\s+/g, '-')) || 'Other',
+          icon: 'tag',
+          color: '#94A3B8',
+          monthly_budget: null,
+          is_system: false,
+          created_at: '',
+        },
+      }));
+      // Dedupe by merchant+amount+date (same pattern as bank sync)
+      const seen = new Set(prev.map((t) => `${t.merchant}|${t.amount}|${t.date}`));
+      const deduped = csvTxs.filter((t) => !seen.has(`${t.merchant}|${t.amount}|${t.date}`));
+      const totalSpent = deduped.filter((t) => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
+      setMonthlySpent((p) => p + totalSpent);
+      setLiquidBalance((p) => p - totalSpent);
+      return [...deduped, ...prev];
+    });
+  };
+
+  // When Copilot calls create_rule, persist it and re-evaluate existing txns
+  const handleRuleCreated = (rule: Rule) => {
+    setRules((prev) => [...prev, rule]);
+    // Re-categorize existing transactions that match the new rule
+    const inputs: RuleInput[] = transactions.map((t) => ({
+      id: t.id,
+      merchant: t.merchant,
+      amount: t.amount,
+      category_name: t.category?.name,
+      capture_method: t.capture_method,
+    }));
+    const results = evaluateBatch(inputs, [rule]);
+    if (results.length === 0) return;
+    const catMap = new Map(results.map((r) => [r.txId, r.category]));
+    setTransactions((prev) =>
+      prev.map((t) => (catMap.has(t.id) ? { ...t, category: { ...t.category!, name: catMap.get(t.id)! } } : t)),
+    );
+  };
+
   const handleBankTransactionsImported = (newTxs: Transaction[]) => {
     setTransactions((prev) => {
       const seen = new Set(
@@ -371,6 +483,15 @@ export default function DashboardPage() {
           >
             <Building2 className="w-3.5 h-3.5 text-blue-400" />
             <span>Connect Bank</span>
+          </button>
+
+          <button
+            onClick={() => setIsCsvImportOpen(true)}
+            className="hidden sm:flex items-center gap-2 px-3 min-h-[44px] rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-slate-300 transition"
+            title="Import a bank CSV statement"
+          >
+            <Upload className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Import CSV</span>
           </button>
 
           <button
@@ -479,6 +600,78 @@ export default function DashboardPage() {
                   Target: {formatCurrency(monthlySavingsTarget, currency)}
                 </span>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 3b. Net Worth + Budget Progress */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Net Worth Card */}
+          <div className="glass-card rounded-2xl p-5 border border-white/10">
+            <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
+              <span>Net Worth</span>
+              <div className="flex items-center gap-1 text-indigo-400 font-medium">
+                <Scale className="w-3.5 h-3.5" />
+                <span>Assets & minus; Liabilities</span>
+              </div>
+            </div>
+            <div className="text-3xl font-bold tabular-nums text-white mt-1">
+              {formatCurrency(netWorth, currency)}
+            </div>
+            <div className="grid grid-cols-2 gap-3 mt-4">
+              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                <p className="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold">
+                  Assets
+                </p>
+                <p className="text-sm font-bold tabular-nums text-emerald-300">
+                  {formatCurrency(totalAssets, currency)}
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+                <p className="text-[10px] uppercase tracking-wider text-red-400 font-semibold">
+                  Liabilities
+                </p>
+                <p className="text-sm font-bold tabular-nums text-red-300">
+                  {formatCurrency(totalLiabilities, currency)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Budget Progress Bars */}
+          <div className="glass-card rounded-2xl p-5 border border-white/10">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-white">
+                Budget Progress
+              </h3>
+              <span className="text-[10px] text-slate-400">
+                {budgetProgress.length} categories
+              </span>
+            </div>
+            <div className="space-y-3">
+              {budgetProgress.map((b) => {
+                const pct = Math.min(100, b.spent / b.budget) * 100;
+                const over = b.spent > b.budget;
+                return (
+                  <div key={b.name}>
+                    <div className="flex justify-between text-[11px] mb-1">
+                      <span className="text-slate-300">{b.name}</span>
+                      <span
+                        className={`tabular-nums font-semibold ${over ? "text-red-400" : "text-slate-400"}`}
+                      >
+                        {formatCurrency(b.spent, currency)} /{" "}
+                        {formatCurrency(b.budget, currency)}
+                      </span>
+                    </div>
+                    <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${over ? "bg-red-500" : "bg-emerald-500"}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -636,8 +829,20 @@ export default function DashboardPage() {
             </button>
           </div>
 
+          {/* Search / filter */}
+          <div className="px-2 pb-2">
+            <input
+              type="search"
+              value={ledgerSearch}
+              onChange={(e) => setLedgerSearch(e.target.value)}
+              placeholder="Search merchant, category, amount…"
+              aria-label="Search transactions"
+              className="w-full h-10 bg-slate-900/80 border border-white/10 rounded-xl px-3.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+
           <div className="divide-y divide-white/5">
-            {transactions.map((tx) => (
+            {filteredTransactions.map((tx) => (
               <div
                 key={tx.id}
                 className="py-3 flex items-center justify-between hover:bg-white/[0.02] px-2 rounded-xl transition"
@@ -739,6 +944,7 @@ export default function DashboardPage() {
       <CopilotDrawer
         isOpen={isCopilotOpen}
         onClose={() => setIsCopilotOpen(false)}
+        onRuleCreated={handleRuleCreated}
         financialContext={{
           currency,
           liquidBalance,
@@ -748,6 +954,13 @@ export default function DashboardPage() {
           safeToSpend,
           categories: categoryData.map((c) => c.name),
         }}
+      />
+
+      {/* CSV Import Modal */}
+      <CsvImportModal
+        isOpen={isCsvImportOpen}
+        onClose={() => setIsCsvImportOpen(false)}
+        onImport={handleCsvImport}
       />
 
       {/* Phase 2: Bank Connect Modal */}

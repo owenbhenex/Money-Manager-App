@@ -66,7 +66,6 @@ Respond ONLY with a JSON object in this format:
     return JSON.parse(text) as ExtractedTransaction;
   } catch (error) {
     console.error('Gemini text extraction failed:', error);
-    // Graceful fallback for offline / mock testing
     return {
       amount: 0,
       merchant: 'Unknown Merchant',
@@ -77,3 +76,51 @@ Respond ONLY with a JSON object in this format:
     };
   }
 }
+
+// ============ COPILOT: system instruction + streaming + function calling ============
+
+export const COPILOT_SYSTEM_INSTRUCTION = `You are Lumina Copilot, an AI financial advisor built into the Lumina Money app.
+
+You help users understand their spending, set budget rules, and make smarter financial decisions.
+
+When a user asks to categorize, filter, or set a rule for specific merchants, use the create_rule tool to persist it. Example: "Categorize all Chevron purchases as Transportation" → call create_rule with merchant_contains="chevron", action=set_category, value="Transportation".
+
+When answering general questions, be concise and specific. Use the financial context provided (balances, spending, categories) to give personalized advice.`;
+
+interface CopilotMessage {
+  role: 'user' | 'model';
+  text: string;
+}
+
+export function buildCopilotContents(
+  question: string,
+  history: CopilotMessage[],
+  context?: Record<string, unknown>
+): string {
+  const ctxStr = context ? `\n\nCurrent financial context:\n${JSON.stringify(context, null, 2)}` : '';
+  const histStr = history?.length
+    ? history.map((m) => `${m.role}: ${m.text}`).join('\n') + '\n'
+    : '';
+  return `${histStr}user: ${question}${ctxStr}`;
+}
+
+// Function calling: create_rule tool declaration (plain config object —
+// @google/genai function declarations are plain JSON schema objects)
+export const createRuleTool = {
+  functionDeclarations: [
+    {
+      name: 'create_rule',
+      description: 'Create a spending rule that automatically categorizes or ignores future transactions matching a condition.',
+      parameters: {
+        type: 'OBJECT',
+        properties: {
+          name: { type: 'STRING', description: 'Human-readable rule name, e.g. "Chevron → Transportation"' },
+          merchant_contains: { type: 'STRING', description: 'Substring to match in merchant name (case-insensitive)' },
+          category_name: { type: 'STRING', description: 'Category to assign for set_category action' },
+          action: { type: 'STRING', enum: ['set_category', 'ignore_transaction'], description: 'What to do with matching transactions' },
+        },
+        required: ['name', 'merchant_contains', 'action'],
+      },
+    },
+  ],
+};

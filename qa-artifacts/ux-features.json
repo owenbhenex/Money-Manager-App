@@ -12,17 +12,17 @@
   {
     "id": "UX-003-spent",
     "status": "PASS",
-    "detail": "burn-rate updated: 18.40 -> 2,835.76"
+    "detail": "burn-rate updated: 1,028.6 -> 2,835.76"
   },
   {
     "id": "UX-003-bank",
     "status": "PASS",
-    "detail": "liquid balance updated: 18.40 -> 14,329.24"
+    "detail": "liquid balance updated: 1,028.6 -> 14,329.24"
   },
   {
     "id": "UX-003-sts",
     "status": "PASS",
-    "detail": "safe-to-spend recomputed: 18.40 -> 9,993.48"
+    "detail": "safe-to-spend recomputed: 1,028.6 -> 9,993.48"
   },
   {
     "id": "UX-005-currency",
@@ -41,8 +41,8 @@
   },
   {
     "id": "UX-006-rule",
-    "status": "SKIP",
-    "detail": "AI quota blocked (env)"
+    "status": "PASS",
+    "detail": "rule creation flow replied"
   },
   {
     "id": "UX-007-undo",
