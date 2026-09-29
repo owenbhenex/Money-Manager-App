@@ -1,6 +1,20 @@
 import { GoogleGenAI } from '@google/genai';
 import { ExtractedTransaction } from '@/types/database.types';
 
+/**
+ * Map an upstream Gemini error to a safe status + message for clients.
+ * The Gemini SDK puts the raw upstream JSON (quota IDs, project metrics,
+ * docs URLs) in error.message — leaking that to clients is a finding (QA-005)
+ * and a 429 on the upstream should surface as 503, not 500.
+ */
+export function mapAiError(error: unknown): { status: number; message: string } {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  if (/\b429\b|RESOURCE_EXHAUSTED|quota|Quota exceeded/i.test(message)) {
+    return { status: 503, message: 'AI service temporarily unavailable. Please try again shortly.' };
+  }
+  return { status: 500, message: 'AI request failed.' };
+}
+
 export const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY || '',
 });

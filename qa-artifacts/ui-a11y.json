@@ -1,0 +1,72 @@
+[
+  {
+    "id": "A1-qc-esc",
+    "status": "PASS",
+    "detail": "Esc closes Quick Capture"
+  },
+  {
+    "id": "A1-bank-esc",
+    "status": "PASS",
+    "detail": "Esc closes Bank Connect"
+  },
+  {
+    "id": "A1-copilot-esc",
+    "status": "PASS",
+    "detail": "Esc closes Copilot: yes"
+  },
+  {
+    "id": "A2-touch-targets",
+    "status": "PASS",
+    "detail": "under-44px: none"
+  },
+  {
+    "id": "A3-h1",
+    "status": "PASS",
+    "detail": "h1 count: 1"
+  },
+  {
+    "id": "A3-main",
+    "status": "PASS",
+    "detail": "main landmark: 1"
+  },
+  {
+    "id": "A3-labels",
+    "status": "PASS",
+    "detail": "unlabeled buttons: 0"
+  },
+  {
+    "id": "R1-scroll-320",
+    "status": "PASS",
+    "detail": "320px horizontal scroll: false (320 vs 320)"
+  },
+  {
+    "id": "R1-mobilebank-320",
+    "status": "PASS",
+    "detail": "320px Connect Bank reachable: true"
+  },
+  {
+    "id": "R1-scroll-375",
+    "status": "PASS",
+    "detail": "375px horizontal scroll: false (375 vs 375)"
+  },
+  {
+    "id": "R1-mobilebank-375",
+    "status": "PASS",
+    "detail": "375px Connect Bank reachable: true"
+  },
+  {
+    "id": "R1-scroll-768",
+    "status": "PASS",
+    "detail": "768px horizontal scroll: false (768 vs 768)"
+  },
+  {
+    "id": "R1-scroll-1024",
+    "status": "PASS",
+    "detail": "1024px horizontal scroll: false (1024 vs 1024)"
+  },
+  {
+    "id": "R1-scroll-1440",
+    "status": "PASS",
+    "detail": "1440px horizontal scroll: false (1440 vs 1440)"
+  }
+]

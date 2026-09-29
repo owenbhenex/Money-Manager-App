@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Sparkles,
   Plus,
@@ -13,7 +13,7 @@ import {
   RotateCcw,
   Sliders,
   Search,
-} from 'lucide-react';
+} from "lucide-react";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -24,39 +24,39 @@ import {
   PieChart,
   Pie,
   Cell,
-} from 'recharts';
-import { QuickCaptureModal } from '@/components/quick-capture/QuickCaptureModal';
-import { CopilotDrawer } from '@/components/copilot/CopilotDrawer';
-import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard';
-import { BankConnectModal } from '@/components/bank/BankConnectModal';
-import { SubscriptionsPanel } from '@/components/subscriptions/SubscriptionsPanel';
-import { ExtractedTransaction, Transaction } from '@/types/database.types';
-import { Building2 } from 'lucide-react';
+} from "recharts";
+import { QuickCaptureModal } from "@/components/quick-capture/QuickCaptureModal";
+import { CopilotDrawer } from "@/components/copilot/CopilotDrawer";
+import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
+import { BankConnectModal } from "@/components/bank/BankConnectModal";
+import { SubscriptionsPanel } from "@/components/subscriptions/SubscriptionsPanel";
+import { ExtractedTransaction, Transaction } from "@/types/database.types";
+import { Building2 } from "lucide-react";
 
 // Locale-stable currency formatter.
 // toLocaleString() without an explicit locale uses the runtime default, which
 // differs between the Node server and the browser (e.g. "11.035" vs "11,035").
 // That mismatch breaks React hydration, so always pin 'en-US' here.
-const formatCurrency = (value: number) => `$${value.toLocaleString('en-US')}`;
+const formatCurrency = (value: number) => `$${value.toLocaleString("en-US")}`;
 
 // Mock Cashflow Trajectory
 const cashflowData = [
-  { day: 'Sep 1', spend: 85, budget: 120 },
-  { day: 'Sep 5', spend: 340, budget: 600 },
-  { day: 'Sep 10', spend: 720, budget: 1200 },
-  { day: 'Sep 15', spend: 1150, budget: 1800 },
-  { day: 'Sep 20', spend: 1680, budget: 2400 },
-  { day: 'Sep 25', spend: 2040, budget: 3000 },
-  { day: 'Sep 28', spend: 2315, budget: 3360 },
+  { day: "Sep 1", spend: 85, budget: 120 },
+  { day: "Sep 5", spend: 340, budget: 600 },
+  { day: "Sep 10", spend: 720, budget: 1200 },
+  { day: "Sep 15", spend: 1150, budget: 1800 },
+  { day: "Sep 20", spend: 1680, budget: 2400 },
+  { day: "Sep 25", spend: 2040, budget: 3000 },
+  { day: "Sep 28", spend: 2315, budget: 3360 },
 ];
 
 // Mock Category Donut
 const categoryData = [
-  { name: 'Food & Dining', value: 720, color: '#F59E0B' },
-  { name: 'Housing & Utilities', value: 950, color: '#6366F1' },
-  { name: 'Transportation', value: 280, color: '#3B82F6' },
-  { name: 'Groceries', value: 310, color: '#10B981' },
-  { name: 'Entertainment', value: 160, color: '#EC4899' },
+  { name: "Food & Dining", value: 720, color: "#F59E0B" },
+  { name: "Housing & Utilities", value: 950, color: "#6366F1" },
+  { name: "Transportation", value: 280, color: "#3B82F6" },
+  { name: "Groceries", value: 310, color: "#10B981" },
+  { name: "Entertainment", value: 160, color: "#EC4899" },
 ];
 
 export default function DashboardPage() {
@@ -67,90 +67,133 @@ export default function DashboardPage() {
 
   // Track connected sandbox institutions so the subscriptions detector knows
   // which transaction streams to analyze.
-  const [connectedInstitutions, setConnectedInstitutions] = useState<string[]>([]);
+  const [connectedInstitutions, setConnectedInstitutions] = useState<string[]>(
+    [],
+  );
 
   // Undo Toast state
-  const [lastLoggedTx, setLastLoggedTx] = useState<ExtractedTransaction | null>(null);
+  const [lastLoggedTx, setLastLoggedTx] = useState<ExtractedTransaction | null>(
+    null,
+  );
   const [undoToastVisible, setUndoToastVisible] = useState(false);
 
   // Financial State
-  const [currency, setCurrency] = useState('USD');
+  const [currency, setCurrency] = useState("USD");
   const [monthlyIncome] = useState(5800);
   const [monthlySavingsTarget] = useState(1500);
   const [liquidBalance, setLiquidBalance] = useState(14850);
   const [monthlySpent, setMonthlySpent] = useState(2315);
 
-  const safeToSpend = Math.max(0, liquidBalance - monthlySavingsTarget - monthlySpent);
+  const safeToSpend = Math.max(
+    0,
+    liquidBalance - monthlySavingsTarget - monthlySpent,
+  );
 
   // Transactions State
   const [transactions, setTransactions] = useState<Transaction[]>([
     {
-      id: 'tx-1',
-      user_id: 'user-1',
-      account_id: 'acc-1',
-      category_id: 'cat-1',
+      id: "tx-1",
+      user_id: "user-1",
+      account_id: "acc-1",
+      category_id: "cat-1",
       amount: -18.4,
-      currency: 'USD',
-      date: '2026-09-28',
-      merchant: 'Chipotle Mexican Grill',
-      notes: 'Quick capture memo',
-      capture_method: 'text_ai',
+      currency: "USD",
+      date: "2026-09-28",
+      merchant: "Chipotle Mexican Grill",
+      notes: "Quick capture memo",
+      capture_method: "text_ai",
       ai_confidence: 0.98,
       receipt_url: null,
-      status: 'confirmed',
+      status: "confirmed",
       created_at: new Date().toISOString(),
-      category: { id: 'c1', user_id: 'u1', name: 'Food & Dining', icon: 'utensils', color: '#F59E0B', monthly_budget: 800, is_system: true, created_at: '' },
+      category: {
+        id: "c1",
+        user_id: "u1",
+        name: "Food & Dining",
+        icon: "utensils",
+        color: "#F59E0B",
+        monthly_budget: 800,
+        is_system: true,
+        created_at: "",
+      },
     },
     {
-      id: 'tx-2',
-      user_id: 'user-1',
-      account_id: 'acc-1',
-      category_id: 'cat-2',
+      id: "tx-2",
+      user_id: "user-1",
+      account_id: "acc-1",
+      category_id: "cat-2",
       amount: -42.5,
-      currency: 'USD',
-      date: '2026-09-27',
-      merchant: 'Chevron Fuel',
-      notes: 'Auto-tagged via Gas rule',
-      capture_method: 'receipt_ocr',
+      currency: "USD",
+      date: "2026-09-27",
+      merchant: "Chevron Fuel",
+      notes: "Auto-tagged via Gas rule",
+      capture_method: "receipt_ocr",
       ai_confidence: 0.94,
       receipt_url: null,
-      status: 'confirmed',
+      status: "confirmed",
       created_at: new Date().toISOString(),
-      category: { id: 'c2', user_id: 'u1', name: 'Transportation', icon: 'car', color: '#3B82F6', monthly_budget: 350, is_system: true, created_at: '' },
+      category: {
+        id: "c2",
+        user_id: "u1",
+        name: "Transportation",
+        icon: "car",
+        color: "#3B82F6",
+        monthly_budget: 350,
+        is_system: true,
+        created_at: "",
+      },
     },
     {
-      id: 'tx-3',
-      user_id: 'user-1',
-      account_id: 'acc-1',
-      category_id: 'cat-3',
+      id: "tx-3",
+      user_id: "user-1",
+      account_id: "acc-1",
+      category_id: "cat-3",
       amount: -129.8,
-      currency: 'USD',
-      date: '2026-09-26',
-      merchant: 'Whole Foods Market',
-      notes: 'Weekly organic groceries',
-      capture_method: 'manual',
+      currency: "USD",
+      date: "2026-09-26",
+      merchant: "Whole Foods Market",
+      notes: "Weekly organic groceries",
+      capture_method: "manual",
       ai_confidence: 1.0,
       receipt_url: null,
-      status: 'confirmed',
+      status: "confirmed",
       created_at: new Date().toISOString(),
-      category: { id: 'c3', user_id: 'u1', name: 'Groceries', icon: 'shopping-cart', color: '#10B981', monthly_budget: 500, is_system: true, created_at: '' },
+      category: {
+        id: "c3",
+        user_id: "u1",
+        name: "Groceries",
+        icon: "shopping-cart",
+        color: "#10B981",
+        monthly_budget: 500,
+        is_system: true,
+        created_at: "",
+      },
     },
     {
-      id: 'tx-4',
-      user_id: 'user-1',
-      account_id: 'acc-1',
-      category_id: 'cat-4',
+      id: "tx-4",
+      user_id: "user-1",
+      account_id: "acc-1",
+      category_id: "cat-4",
       amount: 2900.0,
-      currency: 'USD',
-      date: '2026-09-25',
-      merchant: 'Direct Deposit / Payroll',
-      notes: 'Bi-weekly freelance retainer',
-      capture_method: 'bank_sync',
+      currency: "USD",
+      date: "2026-09-25",
+      merchant: "Direct Deposit / Payroll",
+      notes: "Bi-weekly freelance retainer",
+      capture_method: "bank_sync",
       ai_confidence: 1.0,
       receipt_url: null,
-      status: 'confirmed',
+      status: "confirmed",
       created_at: new Date().toISOString(),
-      category: { id: 'c4', user_id: 'u1', name: 'Income', icon: 'briefcase', color: '#10B981', monthly_budget: null, is_system: true, created_at: '' },
+      category: {
+        id: "c4",
+        user_id: "u1",
+        name: "Income",
+        icon: "briefcase",
+        color: "#10B981",
+        monthly_budget: null,
+        is_system: true,
+        created_at: "",
+      },
     },
   ]);
 
@@ -158,28 +201,28 @@ export default function DashboardPage() {
   const handleTransactionSaved = (extracted: ExtractedTransaction) => {
     const newTx: Transaction = {
       id: `tx-${Date.now()}`,
-      user_id: 'user-1',
-      account_id: 'acc-1',
+      user_id: "user-1",
+      account_id: "acc-1",
       category_id: null,
       amount: -Math.abs(extracted.amount),
       currency,
-      date: extracted.date || new Date().toISOString().split('T')[0],
+      date: extracted.date || new Date().toISOString().split("T")[0],
       merchant: extracted.merchant,
-      notes: extracted.notes || 'Logged via Lumina Quick Capture',
-      capture_method: 'text_ai',
+      notes: extracted.notes || "Logged via Lumina Quick Capture",
+      capture_method: "text_ai",
       ai_confidence: extracted.confidence,
       receipt_url: null,
-      status: 'confirmed',
+      status: "confirmed",
       created_at: new Date().toISOString(),
       category: {
-        id: 'cat-new',
-        user_id: 'user-1',
+        id: "cat-new",
+        user_id: "user-1",
         name: extracted.category_name,
-        icon: 'tag',
-        color: '#3B82F6',
+        icon: "tag",
+        color: "#3B82F6",
         monthly_budget: null,
         is_system: false,
-        created_at: '',
+        created_at: "",
       },
     };
 
@@ -209,13 +252,15 @@ export default function DashboardPage() {
   // Dedupes by merchant+date+amount and keeps balances in sync.
   const handleBankTransactionsImported = (newTxs: Transaction[]) => {
     setTransactions((prev) => {
-      const seen = new Set(prev.map((t) => `${t.merchant}|${t.amount}|${t.date}`));
+      const seen = new Set(
+        prev.map((t) => `${t.merchant}|${t.amount}|${t.date}`),
+      );
       const deduped = newTxs.filter(
-        (t) => !seen.has(`${t.merchant}|${t.amount}|${t.date}`)
+        (t) => !seen.has(`${t.merchant}|${t.amount}|${t.date}`),
       );
       // Record which institution these came from (by account_id prefix).
       const newInsts = deduped
-        .map((t) => (t.account_id || '').replace('bank-', ''))
+        .map((t) => (t.account_id || "").replace("bank-", ""))
         .filter((id, i, arr) => id && arr.indexOf(id) === i);
       setConnectedInstitutions((prevInsts) => {
         const merged = [...new Set([...prevInsts, ...newInsts])];
@@ -225,7 +270,9 @@ export default function DashboardPage() {
       const newSpend = deduped
         .filter((t) => t.amount < 0)
         .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-      setMonthlySpent((prevSpend) => prevSpend + Math.round(newSpend * 100) / 100);
+      setMonthlySpent(
+        (prevSpend) => prevSpend + Math.round(newSpend * 100) / 100,
+      );
       setLiquidBalance((prevBal) => prevBal - Math.round(newSpend * 100) / 100);
       return [...deduped, ...prev];
     });
@@ -244,21 +291,24 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#0A0E27] text-slate-100 flex flex-col pb-24">
-      
       {/* 1. Header Bar */}
-      <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0A0E27]/80 backdrop-blur-xl px-4 sm:px-8 py-3.5 flex items-center justify-between">
+      <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0A0E27]/80 backdrop-blur-xl px-3 sm:px-8 py-3.5 flex items-center justify-between gap-2">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
             <Sparkles className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-base font-bold tracking-tight text-white">Lumina</h1>
+              <h1 className="text-base font-bold tracking-tight text-white">
+                Lumina
+              </h1>
               <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
                 AI Copilot
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 hidden sm:block">Personal Finance Operating System</p>
+            <p className="text-[11px] text-slate-400 hidden md:block">
+              Personal Finance Operating System
+            </p>
           </div>
         </div>
 
@@ -266,11 +316,13 @@ export default function DashboardPage() {
         <div className="flex items-center gap-1.5 sm:gap-2.5">
           <button
             onClick={() => setIsQuickCaptureOpen(true)}
-            className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-slate-300 transition"
+            className="hidden sm:flex items-center gap-2 px-3 min-h-[44px] rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-slate-300 transition"
           >
             <Search className="w-3.5 h-3.5 text-slate-400" />
             <span>Quick Log</span>
-            <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-slate-400">⌘K</kbd>
+            <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-slate-400">
+              ⌘K
+            </kbd>
           </button>
 
           <button
@@ -284,7 +336,7 @@ export default function DashboardPage() {
 
           <button
             onClick={() => setIsBankConnectOpen(true)}
-            className="hidden sm:flex items-center gap-2 px-3 py-1.5 min-h-[36px] rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-slate-300 transition"
+            className="hidden sm:flex items-center gap-2 px-3 min-h-[44px] rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-slate-300 transition"
             title="Connect a bank account"
           >
             <Building2 className="w-3.5 h-3.5 text-blue-400" />
@@ -293,16 +345,18 @@ export default function DashboardPage() {
 
           <button
             onClick={() => setIsCopilotOpen(true)}
-            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 text-xs font-semibold shadow-sm transition"
+            className="flex items-center gap-2 px-3.5 min-h-[44px] rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 text-xs font-semibold shadow-sm transition"
+            title="Ask Copilot"
           >
-            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Ask Copilot</span>
+            <Sparkles className="w-4 h-4 text-indigo-400" />
+            <span className="hidden sm:inline">Ask Copilot</span>
           </button>
 
           <button
             onClick={() => setIsOnboarding(true)}
-            className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white transition"
+            className="hidden min-[400px]:flex w-11 h-11 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 items-center justify-center text-slate-400 hover:text-white transition"
             title="Re-run Setup Wizard"
+            aria-label="Re-run Setup Wizard"
           >
             <Sliders className="w-4 h-4" />
           </button>
@@ -311,7 +365,6 @@ export default function DashboardPage() {
 
       {/* 2. Main Content Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-8 py-6 space-y-6">
-
         {/* Proactive AI Nudge Banner */}
         <div
           onClick={() => setIsCopilotOpen(true)}
@@ -326,7 +379,8 @@ export default function DashboardPage() {
                 Proactive Insight: Food & Dining is 28% ahead of standard pace
               </span>
               <p className="text-[11px] text-slate-400">
-                You have $80 remaining in dining for the next 3 days. Tap to ask Lumina for safe spending tips.
+                You have $80 remaining in dining for the next 3 days. Tap to ask
+                Lumina for safe spending tips.
               </p>
             </div>
           </div>
@@ -335,7 +389,6 @@ export default function DashboardPage() {
 
         {/* 3. Metric Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          
           {/* Safe-to-Spend */}
           <div className="glass-card rounded-2xl p-5 border border-white/10 relative overflow-hidden">
             <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
@@ -349,7 +402,8 @@ export default function DashboardPage() {
               {formatCurrency(safeToSpend)}
             </div>
             <p className="text-[11px] text-slate-400 mt-2">
-              Free to spend without encroaching on your {formatCurrency(monthlySavingsTarget)} savings goal.
+              Free to spend without encroaching on your{" "}
+              {formatCurrency(monthlySavingsTarget)} savings goal.
             </p>
           </div>
 
@@ -384,27 +438,31 @@ export default function DashboardPage() {
               <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
                 <div
                   className="h-full bg-blue-500 rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, (monthlySpent / monthlyIncome) * 100)}%` }}
+                  style={{
+                    width: `${Math.min(100, (monthlySpent / monthlyIncome) * 100)}%`,
+                  }}
                 />
               </div>
               <div className="flex justify-between text-[10px] text-slate-400 mt-1">
                 <span>Inflow: {formatCurrency(monthlyIncome)}</span>
-                                <span>Target: {formatCurrency(monthlySavingsTarget)}</span>
+                <span>Target: {formatCurrency(monthlySavingsTarget)}</span>
               </div>
             </div>
           </div>
-
         </div>
 
         {/* 4. Analytics Visualizers (Recharts) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
           {/* Cash Flow Trajectory Chart */}
           <div className="lg:col-span-2 glass-card rounded-2xl p-5 border border-white/10">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-sm font-semibold text-white">Cash Flow Trajectory</h3>
-                <p className="text-xs text-slate-400">Cumulative spend vs planned budget threshold</p>
+                <h3 className="text-sm font-semibold text-white">
+                  Cash Flow Trajectory
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Cumulative spend vs planned budget threshold
+                </p>
               </div>
               <span className="text-xs text-emerald-400 font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
                 Below Upper Bound
@@ -413,22 +471,45 @@ export default function DashboardPage() {
 
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={cashflowData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <AreaChart
+                  data={cashflowData}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                >
                   <defs>
-                    <linearGradient id="spendGradient" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient
+                      id="spendGradient"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
                       <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.0} />
+                      <stop
+                        offset="95%"
+                        stopColor="#3B82F6"
+                        stopOpacity={0.0}
+                      />
                     </linearGradient>
                   </defs>
-                  <XAxis dataKey="day" stroke="#64748B" fontSize={11} tickLine={false} />
-                  <YAxis stroke="#64748B" fontSize={11} tickLine={false} tickFormatter={(v) => `$${v}`} />
+                  <XAxis
+                    dataKey="day"
+                    stroke="#64748B"
+                    fontSize={11}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    stroke="#64748B"
+                    fontSize={11}
+                    tickLine={false}
+                    tickFormatter={(v) => `$${v}`}
+                  />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#0D132D',
-                      borderColor: 'rgba(255,255,255,0.12)',
-                      borderRadius: '12px',
-                      color: '#fff',
-                      fontSize: '12px',
+                      backgroundColor: "#0D132D",
+                      borderColor: "rgba(255,255,255,0.12)",
+                      borderRadius: "12px",
+                      color: "#fff",
+                      fontSize: "12px",
                     }}
                   />
                   <Area
@@ -447,7 +528,9 @@ export default function DashboardPage() {
           {/* Category Breakdown Donut */}
           <div className="glass-card rounded-2xl p-5 border border-white/10 flex flex-col justify-between">
             <div>
-              <h3 className="text-sm font-semibold text-white">Top Spending Categories</h3>
+              <h3 className="text-sm font-semibold text-white">
+                Top Spending Categories
+              </h3>
               <p className="text-xs text-slate-400">September distribution</p>
             </div>
 
@@ -469,11 +552,11 @@ export default function DashboardPage() {
                   </Pie>
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#0D132D',
-                      borderColor: 'rgba(255,255,255,0.12)',
-                      borderRadius: '12px',
-                      color: '#fff',
-                      fontSize: '12px',
+                      backgroundColor: "#0D132D",
+                      borderColor: "rgba(255,255,255,0.12)",
+                      borderRadius: "12px",
+                      color: "#fff",
+                      fontSize: "12px",
                     }}
                   />
                 </PieChart>
@@ -482,29 +565,40 @@ export default function DashboardPage() {
 
             <div className="space-y-1.5">
               {categoryData.map((cat) => (
-                <div key={cat.name} className="flex items-center justify-between text-xs">
+                <div
+                  key={cat.name}
+                  className="flex items-center justify-between text-xs"
+                >
                   <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.color }} />
+                    <span
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: cat.color }}
+                    />
                     <span className="text-slate-300">{cat.name}</span>
                   </div>
-                  <span className="font-semibold tabular-nums text-white">${cat.value}</span>
+                  <span className="font-semibold tabular-nums text-white">
+                    ${cat.value}
+                  </span>
                 </div>
               ))}
             </div>
           </div>
-
         </div>
 
         {/* 5. Recent Transactions Table */}
         <div className="glass-card rounded-2xl p-5 border border-white/10">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-sm font-semibold text-white">Recent Transactions</h3>
-              <p className="text-xs text-slate-400">Real-time ledger with AI auto-categorization</p>
+              <h3 className="text-sm font-semibold text-white">
+                Recent Transactions
+              </h3>
+              <p className="text-xs text-slate-400">
+                Real-time ledger with AI auto-categorization
+              </p>
             </div>
             <button
               onClick={() => setIsQuickCaptureOpen(true)}
-              className="text-xs text-blue-400 hover:text-blue-300 font-medium transition"
+              className="inline-flex items-center justify-center min-h-[44px] px-2 rounded-lg text-xs text-blue-400 hover:text-blue-300 font-medium transition"
             >
               + Add Transaction
             </button>
@@ -520,8 +614,8 @@ export default function DashboardPage() {
                   <div
                     className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                       tx.amount > 0
-                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                        : 'bg-white/5 text-slate-300 border border-white/10'
+                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                        : "bg-white/5 text-slate-300 border border-white/10"
                     }`}
                   >
                     {tx.amount > 0 ? (
@@ -531,14 +625,16 @@ export default function DashboardPage() {
                     )}
                   </div>
                   <div>
-                    <span className="text-sm font-semibold text-white block">{tx.merchant}</span>
+                    <span className="text-sm font-semibold text-white block">
+                      {tx.merchant}
+                    </span>
                     <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
                       <span>{tx.date}</span>
                       <span>•</span>
                       <span className="px-1.5 py-0.2 rounded bg-white/5 text-[10px] text-slate-300 font-medium">
-                        {tx.category?.name || 'General'}
+                        {tx.category?.name || "General"}
                       </span>
-                      {tx.capture_method.includes('ai') && (
+                      {tx.capture_method.includes("ai") && (
                         <span className="flex items-center gap-0.5 text-[10px] text-indigo-400">
                           <Sparkles className="w-2.5 h-2.5" />
                           AI
@@ -551,12 +647,16 @@ export default function DashboardPage() {
                 <div className="text-right">
                   <span
                     className={`text-sm font-bold tabular-nums block ${
-                      tx.amount > 0 ? 'text-emerald-400' : 'text-slate-100'
+                      tx.amount > 0 ? "text-emerald-400" : "text-slate-100"
                     }`}
                   >
-                    {tx.amount > 0 ? `+$${tx.amount.toFixed(2)}` : `-$${Math.abs(tx.amount).toFixed(2)}`}
+                    {tx.amount > 0
+                      ? `+$${tx.amount.toFixed(2)}`
+                      : `-$${Math.abs(tx.amount).toFixed(2)}`}
                   </span>
-                  <span className="text-[10px] text-slate-500 capitalize">{tx.capture_method.replace('_', ' ')}</span>
+                  <span className="text-[10px] text-slate-500 capitalize">
+                    {tx.capture_method.replace("_", " ")}
+                  </span>
                 </div>
               </div>
             ))}
@@ -568,13 +668,15 @@ export default function DashboardPage() {
           institutionIds={connectedInstitutions}
           onConnectBank={() => setIsBankConnectOpen(true)}
         />
-
       </main>
 
       {/* 6. Undo Notification Toast */}
       {undoToastVisible && lastLoggedTx && (
         <div className="fixed bottom-24 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2.5 rounded-xl bg-slate-900 border border-white/20 shadow-2xl text-xs text-white animate-in slide-in-from-bottom duration-200">
-          <span>Logged: <strong>{lastLoggedTx.merchant}</strong> (${lastLoggedTx.amount})</span>
+          <span>
+            Logged: <strong>{lastLoggedTx.merchant}</strong> ($
+            {lastLoggedTx.amount})
+          </span>
           <button
             onClick={handleUndo}
             className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-blue-400 font-semibold transition"
@@ -622,7 +724,6 @@ export default function DashboardPage() {
         onClose={() => setIsBankConnectOpen(false)}
         onTransactionsImported={handleBankTransactionsImported}
       />
-
     </div>
   );
 }

@@ -1,0 +1,16 @@
+{
+  "name": "Lumina Money | AI Personal Finance Copilot",
+  "short_name": "Lumina",
+  "description": "Frictionless multimodal expense capture, proactive AI financial advisory, and automated spending rules.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A0E27",
+  "theme_color": "#0A0E27",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ]
+}

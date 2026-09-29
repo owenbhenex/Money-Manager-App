@@ -1,7 +1,15 @@
-'use client';
+"use client";
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Sparkles, X, Send, Sliders, CheckCircle2, Loader2, ArrowRight } from 'lucide-react';
+import React, { useState, useRef, useEffect } from "react";
+import {
+  Sparkles,
+  X,
+  Send,
+  Sliders,
+  CheckCircle2,
+  Loader2,
+  ArrowRight,
+} from "lucide-react";
 
 interface CopilotDrawerProps {
   isOpen: boolean;
@@ -20,7 +28,7 @@ interface CopilotDrawerProps {
 
 interface Message {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   createdRule?: any;
 }
@@ -33,13 +41,13 @@ export function CopilotDrawer({
 }: CopilotDrawerProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
-      id: '1',
-      role: 'assistant',
+      id: "1",
+      role: "assistant",
       content:
         "Hello! I'm Lumina, your personal finance copilot. You can ask me about your safe-to-spend balance, evaluate a purchase, or create automated spending rules just by chatting.",
     },
   ]);
-  const [inputValue, setInputValue] = useState('');
+  const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -50,27 +58,38 @@ export function CopilotDrawer({
     }
   }, [messages, isLoading]);
 
+  // Escape closes the drawer (a11y — matches QuickCaptureModal behaviour)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   const handleSend = async (customPrompt?: string) => {
     const textToSend = customPrompt || inputValue;
     if (!textToSend.trim() || isLoading) return;
 
     const userMsg: Message = {
       id: Date.now().toString(),
-      role: 'user',
+      role: "user",
       content: textToSend,
     };
 
     setMessages((prev) => [...prev, userMsg]);
-    setInputValue('');
+    setInputValue("");
     setIsLoading(true);
 
     try {
-      const res = await fetch('/api/copilot/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/copilot/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: [...messages, userMsg].map((m) => ({
-            role: m.role === 'user' ? 'user' : 'model',
+            role: m.role === "user" ? "user" : "model",
             content: m.content,
           })),
           financialContext,
@@ -81,7 +100,7 @@ export function CopilotDrawer({
       if (data.reply) {
         const assistantMsg: Message = {
           id: (Date.now() + 1).toString(),
-          role: 'assistant',
+          role: "assistant",
           content: data.reply,
           createdRule: data.createdRule,
         };
@@ -92,7 +111,7 @@ export function CopilotDrawer({
         }
       }
     } catch (err) {
-      console.error('Failed to query copilot:', err);
+      console.error("Failed to query copilot:", err);
     } finally {
       setIsLoading(false);
     }
@@ -101,9 +120,14 @@ export function CopilotDrawer({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end bg-black/60 backdrop-blur-sm transition-opacity">
-      <div className="w-full sm:max-w-md h-full glass-drawer flex flex-col border-l border-white/10 shadow-2xl animate-in slide-in-from-right duration-250">
-        
+    <div
+      className="fixed inset-0 z-40 flex justify-end bg-black/60 backdrop-blur-sm transition-opacity"
+      onClick={onClose}
+    >
+      <div
+        className="w-full sm:max-w-md h-full glass-drawer flex flex-col border-l border-white/10 shadow-2xl animate-in slide-in-from-right duration-250"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 bg-slate-950/40">
           <div className="flex items-center gap-3">
@@ -115,12 +139,16 @@ export function CopilotDrawer({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-semibold text-white">Lumina Copilot</h3>
+                <h3 className="text-sm font-semibold text-white">
+                  Lumina Copilot
+                </h3>
                 <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
                   AI Advisor
                 </span>
               </div>
-              <p className="text-xs text-slate-400">Gemini 2.5 Active Context</p>
+              <p className="text-xs text-slate-400">
+                Gemini 2.5 Active Context
+              </p>
             </div>
           </div>
           <button
@@ -152,13 +180,13 @@ export function CopilotDrawer({
           {messages.map((msg) => (
             <div
               key={msg.id}
-              className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
+              className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}
             >
               <div
                 className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                  msg.role === 'user'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'bg-white/[0.04] border border-indigo-500/20 text-slate-100'
+                  msg.role === "user"
+                    ? "bg-blue-600 text-white shadow-md"
+                    : "bg-white/[0.04] border border-indigo-500/20 text-slate-100"
                 }`}
               >
                 {msg.content}
@@ -174,9 +202,14 @@ export function CopilotDrawer({
                       Rule Active: {msg.createdRule.rule_name}
                     </div>
                     <p className="text-[11px] text-indigo-300/80 mt-0.5">
-                      Action: {msg.createdRule.action_type === 'set_category' ? 'Auto-categorize' : 'Spending Alert'}
-                      {msg.createdRule.merchant && ` on "${msg.createdRule.merchant}"`}
-                      {msg.createdRule.threshold_amount && ` over $${msg.createdRule.threshold_amount}`}
+                      Action:{" "}
+                      {msg.createdRule.action_type === "set_category"
+                        ? "Auto-categorize"
+                        : "Spending Alert"}
+                      {msg.createdRule.merchant &&
+                        ` on "${msg.createdRule.merchant}"`}
+                      {msg.createdRule.threshold_amount &&
+                        ` over $${msg.createdRule.threshold_amount}`}
                     </p>
                   </div>
                 </div>
@@ -195,19 +228,23 @@ export function CopilotDrawer({
         {/* Quick Suggestion Pills */}
         <div className="px-5 py-2 flex items-center gap-2 overflow-x-auto no-scrollbar border-t border-white/5">
           <button
-            onClick={() => handleSend('Can I afford a $150 dinner tonight?')}
+            onClick={() => handleSend("Can I afford a $150 dinner tonight?")}
             className="whitespace-nowrap px-3 py-1 rounded-full text-xs bg-white/5 hover:bg-white/10 text-slate-300 border border-white/5 transition"
           >
             Can I afford a $150 dinner?
           </button>
           <button
-            onClick={() => handleSend('Set a rule: categorize all Uber rides as Transportation')}
+            onClick={() =>
+              handleSend(
+                "Set a rule: categorize all Uber rides as Transportation",
+              )
+            }
             className="whitespace-nowrap px-3 py-1 rounded-full text-xs bg-white/5 hover:bg-white/10 text-slate-300 border border-white/5 transition"
           >
             Rule: Uber to Transportation
           </button>
           <button
-            onClick={() => handleSend('Analyze my monthly spending pace')}
+            onClick={() => handleSend("Analyze my monthly spending pace")}
             className="whitespace-nowrap px-3 py-1 rounded-full text-xs bg-white/5 hover:bg-white/10 text-slate-300 border border-white/5 transition"
           >
             Analyze my spending pace
@@ -240,7 +277,6 @@ export function CopilotDrawer({
             </button>
           </form>
         </div>
-
       </div>
     </div>
   );

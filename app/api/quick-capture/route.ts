@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ai, QUICK_CAPTURE_SYSTEM_INSTRUCTION } from '@/lib/ai/gemini';
+import { mapAiError } from '@/lib/ai/gemini';
+import { parseJsonBody, badRequest } from '@/lib/api/body';
 import { ExtractedTransaction } from '@/types/database.types';
 
 export async function POST(req: NextRequest) {
@@ -98,12 +100,13 @@ Extract transaction details and return ONLY a JSON object:
       { success: false, error: 'No text or file provided' },
       { status: 400 }
     );
-  } catch (error: any) {
+  } catch (error) {
+    const mapped = mapAiError(error);
     console.error('Quick capture API error:', error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || 'Failed to process quick capture',
+        error: mapped.message,
         data: {
           amount: 0,
           merchant: 'Manual Entry Needed',
@@ -113,7 +116,7 @@ Extract transaction details and return ONLY a JSON object:
           notes: 'AI processing encountered an error',
         },
       },
-      { status: 500 }
+      { status: mapped.status }
     );
   }
 }

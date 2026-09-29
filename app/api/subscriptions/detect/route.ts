@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ai } from '@/lib/ai/gemini';
+import { ai, mapAiError } from '@/lib/ai/gemini';
 import { fetchSandboxTransactions, SandboxTransaction } from '@/lib/bank/sandbox';
 import { parseJsonBody, badRequest } from '@/lib/api/body';
 
@@ -104,11 +104,11 @@ ${SUBSCRIPTION_DETECTOR_PROMPT}`,
       analyzed_count: transactions.length,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to detect subscriptions';
-    console.error('Subscriptions detector error:', error);
-    return NextResponse.json(
-      { success: false, error: message, subscriptions: [], monthly_total: 0 },
-      { status: 500 }
-    );
+      const mapped = mapAiError(error);
+      console.error('Subscriptions detector error:', error);
+      return NextResponse.json(
+        { success: false, error: mapped.message, subscriptions: [], monthly_total: 0 },
+        { status: mapped.status }
+      );
   }
 }

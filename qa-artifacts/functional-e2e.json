@@ -1,0 +1,112 @@
+[
+  {
+    "id": "J1-smoke",
+    "status": "PASS",
+    "detail": "dashboard renders core sections"
+  },
+  {
+    "id": "J1-console",
+    "status": "PASS",
+    "detail": "console errors: none"
+  },
+  {
+    "id": "J1-network",
+    "status": "PASS",
+    "detail": "failed requests: none"
+  },
+  {
+    "id": "J2-modal-open",
+    "status": "PASS",
+    "detail": "institutions listed"
+  },
+  {
+    "id": "J2-link",
+    "status": "PASS",
+    "detail": "Chase linked, 6 txns"
+  },
+  {
+    "id": "J2-refresh-state",
+    "status": "PASS",
+    "detail": "refresh resets client state (mock app, expected non-persistence)"
+  },
+  {
+    "id": "J2-dedupe",
+    "status": "PASS",
+    "detail": "re-link dedupe: spotify x1"
+  },
+  {
+    "id": "J2-console",
+    "status": "PASS",
+    "detail": "console: none"
+  },
+  {
+    "id": "J3-modal-open",
+    "status": "PASS",
+    "detail": "quick capture modal opens from FAB"
+  },
+  {
+    "id": "J3-empty-submit",
+    "status": "PASS",
+    "detail": "empty submit guard: button disabled (good)"
+  },
+  {
+    "id": "J3-fill-enables",
+    "status": "PASS",
+    "detail": "typing enables submit"
+  },
+  {
+    "id": "J3-parse",
+    "status": "PASS",
+    "detail": "AI parse returns review card or clean error"
+  },
+  {
+    "id": "J4-drawer-open",
+    "status": "PASS",
+    "detail": "copilot drawer opens"
+  },
+  {
+    "id": "J4-reply",
+    "status": "PASS",
+    "detail": "copilot replies to safe-to-spend query"
+  },
+  {
+    "id": "J4-console",
+    "status": "FAIL",
+    "detail": "console: Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  },
+  {
+    "id": "J5-wizard-open",
+    "status": "PASS",
+    "detail": "onboarding wizard opens from header"
+  },
+  {
+    "id": "J5-step2",
+    "status": "PASS",
+    "detail": "wizard advances to step 2"
+  },
+  {
+    "id": "J6-banner",
+    "status": "PASS",
+    "detail": "proactive insight banner opens copilot"
+  },
+  {
+    "id": "J6-copilot-esc",
+    "status": "PASS",
+    "detail": "Esc closes copilot drawer: yes"
+  },
+  {
+    "id": "J6-add-tx",
+    "status": "PASS",
+    "detail": "+ Add Transaction opens quick capture"
+  },
+  {
+    "id": "J6-detect",
+    "status": "FAIL",
+    "detail": "subscription detection renders results"
+  },
+  {
+    "id": "J6-console",
+    "status": "FAIL",
+    "detail": "console: Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  }
+]

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ai } from '@/lib/ai/gemini';
+import { ai, mapAiError } from '@/lib/ai/gemini';
 import { parseJsonBody, badRequest } from '@/lib/api/body';
 
 interface CopilotFinancialContext {
@@ -120,15 +120,15 @@ User: ${lastMessage?.content || 'Hello'}
       createdRule,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Copilot request failed';
-    console.error('Copilot API error:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        reply: "I'm having trouble analyzing your request right now. Please check your Gemini API key or try again in a moment.",
-        error: message,
-      },
-      { status: 500 }
-    );
+      const mapped = mapAiError(error);
+      console.error('Copilot API error:', error);
+      return NextResponse.json(
+        {
+          success: false,
+          reply: "I'm having trouble analyzing your request right now. Please check your Gemini API key or try again in a moment.",
+          error: mapped.message,
+        },
+        { status: mapped.status }
+      );
   }
 }
