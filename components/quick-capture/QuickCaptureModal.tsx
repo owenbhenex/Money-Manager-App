@@ -43,6 +43,7 @@ export function QuickCaptureModal({
   const [extractedData, setExtractedData] =
     useState<ExtractedTransaction | null>(null);
   const [extractionError, setExtractionError] = useState<string | null>(null);
+  const [offlineNotice, setOfflineNotice] = useState<string | null>(null);
 
   // Voice Recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -79,6 +80,7 @@ export function QuickCaptureModal({
 
     setIsProcessing(true);
     setExtractionError(null);
+    setOfflineNotice(null);
     try {
       const formData = new FormData();
       formData.append("mode", activeMode);
@@ -96,6 +98,11 @@ export function QuickCaptureModal({
       const json = await res.json();
       if (json.success && json.data) {
         setExtractedData(json.data);
+        setOfflineNotice(
+          json.source === "local"
+            ? "AI service unavailable — parsed on this device. Double-check the fields below."
+            : null,
+        );
       } else {
         // AI returned a graceful fallback shape (Manual Entry Needed) or hard
         // failure. Surface it to the user so input isn't silently lost.
@@ -176,6 +183,7 @@ export function QuickCaptureModal({
     setTextInput("");
     setExtractedData(null);
     setExtractionError(null);
+    setOfflineNotice(null);
     setReceiptFile(null);
     setReceiptPreview(null);
     setIsRecording(false);
@@ -410,6 +418,17 @@ export function QuickCaptureModal({
           ) : (
             /* Review & 1-Tap Confirmation Card */
             <div className="space-y-5 animate-in fade-in duration-200">
+              {offlineNotice && (
+                <div
+                  role="status"
+                  className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-2"
+                >
+                  <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-amber-200/90">
+                    {offlineNotice}
+                  </p>
+                </div>
+              )}
               <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 space-y-3">
                 <div className="flex items-start justify-between">
                   <div>

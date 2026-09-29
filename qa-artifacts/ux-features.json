@@ -12,17 +12,17 @@
   {
     "id": "UX-003-spent",
     "status": "PASS",
-    "detail": "burn-rate updated: 1,028.6 -> 2,835.76"
+    "detail": "burn-rate updated: 1,028.6 -> 3,235.68"
   },
   {
     "id": "UX-003-bank",
     "status": "PASS",
-    "detail": "liquid balance updated: 1,028.6 -> 14,329.24"
+    "detail": "liquid balance updated: 1,028.6 -> 13,929.32"
   },
   {
     "id": "UX-003-sts",
     "status": "PASS",
-    "detail": "safe-to-spend recomputed: 1,028.6 -> 9,993.48"
+    "detail": "safe-to-spend recomputed: 1,028.6 -> 9,193.64"
   },
   {
     "id": "UX-005-currency",
@@ -45,8 +45,18 @@
     "detail": "rule creation flow replied"
   },
   {
+    "id": "UX-007-toast",
+    "status": "PASS",
+    "detail": "undo toast visible after save"
+  },
+  {
+    "id": "UX-007-saved",
+    "status": "PASS",
+    "detail": "merchant appears in ledger"
+  },
+  {
     "id": "UX-007-undo",
-    "status": "SKIP",
-    "detail": "requires live AI parse (quota exhausted); code-verified in handleTransactionSaved"
+    "status": "PASS",
+    "detail": "row removed after undo"
   }
 ]

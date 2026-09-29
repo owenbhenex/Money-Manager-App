@@ -138,13 +138,40 @@ function grabMetric(body, label) {
   }
 
   // ============ F7: Undo toast after quick capture save ============
+  // Text capture now works without Gemini (local parser fallback), so this is
+  // a real end-to-end check: parse -> save -> toast -> undo -> row removed.
   {
     const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const page = await ctx.newPage();
     await page.goto(BASE + '/', { waitUntil: 'networkidle' });
-    // The undo toast only appears after a successful AI parse + save; with
-    // quota exhausted we check the toast UI exists in code. Skip if blocked.
-    rec('UX-007-undo', 'SKIP', 'requires live AI parse (quota exhausted); code-verified in handleTransactionSaved');
+
+    // Open Quick Capture via Cmd/Ctrl+K
+    await page.keyboard.press('Control+k');
+    await page.waitForTimeout(600);
+    const ta = page.locator('textarea').first();
+    await ta.fill('Undo demo coffee at TestMerchantXYZ for $12.34');
+    await page.keyboard.press('Enter');
+
+    // Wait for the review card (either AI or local parse)
+    const confirmed = await page.waitForSelector('text=/Confirm & Save/i', { timeout: 15000 }).catch(() => null);
+    if (!confirmed) {
+      rec('UX-007-undo', 'FAIL', 'no review card appeared (parse failed)');
+    } else {
+      await confirmed.click();
+      await page.waitForTimeout(1200);
+      const toastGone = await page.locator('text=/Undo/i').first().isVisible().catch(() => false);
+      rec('UX-007-toast', toastGone ? 'PASS' : 'FAIL', toastGone ? 'undo toast visible after save' : 'no undo toast');
+
+      const ledgerHas = await page.locator('text=/TestMerchantXYZ/i').first().isVisible().catch(() => false);
+      rec('UX-007-saved', ledgerHas ? 'PASS' : 'FAIL', ledgerHas ? 'merchant appears in ledger' : 'not in ledger');
+
+      // Click undo
+      const undoBtn = page.locator('button:has-text("Undo")').first();
+      await undoBtn.click().catch(() => {});
+      await page.waitForTimeout(1200);
+      const gone = !(await page.locator('text=/TestMerchantXYZ/i').first().isVisible().catch(() => false));
+      rec('UX-007-undo', gone ? 'PASS' : 'FAIL', gone ? 'row removed after undo' : 'row still present');
+    }
     await ctx.close();
   }
 
