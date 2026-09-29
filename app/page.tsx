@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Sparkles,
   Plus,
@@ -35,6 +35,7 @@ import { ExtractedTransaction, Transaction } from "@/types/database.types";
 import { Building2, Upload } from "lucide-react";
 import { CsvImportModal } from "@/components/import/CsvImportModal";
 import { evaluateBatch, type Rule, type RuleInput } from "@/lib/rules/engine";
+import { useFinancialData } from "@/lib/hooks/useFinancialData";
 
 // Locale-stable currency formatter.
 // toLocaleString() without an explicit locale uses the runtime default, which
@@ -74,6 +75,20 @@ const categoryData = [
 ];
 
 export default function DashboardPage() {
+  // Real Supabase data when signed in; empty (demo fallback) when not.
+  const {
+    data: userData,
+    loading: dataLoading,
+    isAuthenticated,
+    reload: reloadUserData,
+  } = useFinancialData();
+
+  // Derived display data: prefer real rows once loaded, otherwise use mock data
+  // so the dashboard stays interactive for visitors who never signed in.
+  const dbTransactions = userData.transactions;
+  const dbAccounts = userData.accounts;
+  const dbCategories = userData.categories;
+
   const [isOnboarding, setIsOnboarding] = useState(false);
   const [isQuickCaptureOpen, setIsQuickCaptureOpen] = useState(false);
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
@@ -120,7 +135,10 @@ export default function DashboardPage() {
     0,
   );
   const totalLiabilities = Math.abs(
-    MOCK_ACCOUNTS.filter((a) => a.balance < 0).reduce((s, a) => s + a.balance, 0),
+    MOCK_ACCOUNTS.filter((a) => a.balance < 0).reduce(
+      (s, a) => s + a.balance,
+      0,
+    ),
   );
   const netWorth = totalAssets - totalLiabilities;
 
@@ -132,7 +150,44 @@ export default function DashboardPage() {
     budget: Math.max(c.value, Math.round((c.value / 0.7) * 10) / 10),
   }));
 
-
+  // Sync DB data into local state once, when authenticated data arrives.
+  // Uses a ref so switching accounts or re-onboarding can re-sync later.
+  const syncedRef = useRef(false);
+  useEffect(() => {
+    if (!isAuthenticated || syncedRef.current) return;
+    if (userData.profile) {
+      syncedRef.current = true;
+      const pf = userData.profile as {
+        currency?: string;
+        monthly_income?: number;
+        monthly_savings_target?: number;
+        onboarding_completed?: boolean;
+      };
+      if (pf.currency) setCurrency(pf.currency);
+      if (typeof pf.monthly_income === "number")
+        setMonthlyIncome(pf.monthly_income);
+      if (typeof pf.monthly_savings_target === "number")
+        setMonthlySavingsTarget(pf.monthly_savings_target);
+      if (pf.onboarding_completed) setIsOnboarding(false);
+    }
+    if (dbAccounts.length > 0) {
+      const liquid = dbAccounts
+        .filter(
+          (a: { type?: string }) => a.type === "checking" || a.type === "cash",
+        )
+        .reduce(
+          (s: number, a: { balance?: number }) => s + Number(a.balance ?? 0),
+          0,
+        );
+      setLiquidBalance(liquid);
+    }
+    if (dbTransactions.length > 0) {
+      setTransactions(dbTransactions);
+    }
+    if (userData.rules.length > 0) {
+      setRules(userData.rules);
+    }
+  }, [isAuthenticated, userData, dbAccounts, dbTransactions]);
 
   // Cmd/Ctrl+K opens Quick Capture — the header displays this shortcut.
   useEffect(() => {
@@ -268,7 +323,36 @@ export default function DashboardPage() {
     : transactions;
 
   // Handle Quick Capture Save
-  const handleTransactionSaved = (extracted: ExtractedTransaction) => {
+  const handleTransactionSaved = async (extracted: ExtractedTransaction) => {
+    // Persist when authenticated
+    if (isAuthenticated) {
+      const res = await fetch("/api/transactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          merchant: extracted.merchant,
+          amount: -Math.abs(extracted.amount),
+          date: extracted.date || new Date().toISOString().split("T")[0],
+          category_name: extracted.category_name,
+          notes: extracted.notes || "Logged via Lumina Quick Capture",
+          capture_method: "text_ai",
+          ai_confidence: extracted.confidence,
+          currency,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        const newTx = json.transaction as Transaction;
+        setTransactions((prev) => [newTx, ...prev]);
+        setMonthlySpent((prev) => prev + Math.abs(extracted.amount));
+        setLiquidBalance((prev) => prev - Math.abs(extracted.amount));
+        setLastLoggedTx(extracted);
+        setUndoToastVisible(true);
+        setTimeout(() => setUndoToastVisible(false), 5000);
+        return;
+      }
+    }
+    // Demo mode (not authenticated)
     const newTx: Transaction = {
       id: `tx-${Date.now()}`,
       user_id: "user-1",
@@ -308,58 +392,71 @@ export default function DashboardPage() {
     }, 5000);
   };
 
-  const handleUndo = () => {
-    if (lastLoggedTx && transactions.length > 0) {
-      const removed = transactions[0];
-      setTransactions((prev) => prev.slice(1));
-      setMonthlySpent((prev) => Math.max(0, prev - Math.abs(removed.amount)));
-      setLiquidBalance((prev) => prev + Math.abs(removed.amount));
-      setUndoToastVisible(false);
+  const handleUndo = async () => {
+    if (!lastLoggedTx || transactions.length === 0) return;
+    const removed = transactions[0];
+    if (isAuthenticated && removed?.id) {
+      await fetch(`/api/transactions?id=${removed.id}`, { method: "DELETE" });
     }
+    setTransactions((prev) => prev.slice(1));
+    setMonthlySpent((prev) => Math.max(0, prev - Math.abs(removed.amount)));
+    setLiquidBalance((prev) => prev + Math.abs(removed.amount));
+    setUndoToastVisible(false);
   };
 
   // Phase 2: handle transactions pulled from a sandbox bank connection.
   // Dedupes by merchant+date+amount and keeps balances in sync.
-  const handleCsvImport = (rows: { date: string; merchant: string; amount: number; notes?: string }[]) => {
+  const handleCsvImport = (
+    rows: { date: string; merchant: string; amount: number; notes?: string }[],
+  ) => {
     // Apply rule engine to categorize/dedupe imports
     const ruleInputs: RuleInput[] = rows.map((r) => ({
-      id: `csv-${r.date}-${r.merchant}`.toLowerCase().replace(/\s+/g, '-'),
+      id: `csv-${r.date}-${r.merchant}`.toLowerCase().replace(/\s+/g, "-"),
       merchant: r.merchant,
       amount: r.amount,
     }));
     const results = evaluateBatch(ruleInputs, rules);
-    const overrides = new Map(results.map((r) => [r.txId, r.category ?? '']));
+    const overrides = new Map(results.map((r) => [r.txId, r.category ?? ""]));
     setTransactions((prev) => {
       const csvTxs: Transaction[] = rows.map((r) => ({
-        id: `csv-${r.date}-${r.merchant}`.toLowerCase().replace(/\s+/g, '-'),
-        user_id: 'user-1',
-        account_id: 'acc-1',
-        category_id: 'cat-csv',
+        id: `csv-${r.date}-${r.merchant}`.toLowerCase().replace(/\s+/g, "-"),
+        user_id: "user-1",
+        account_id: "acc-1",
+        category_id: "cat-csv",
         amount: r.amount,
         currency,
         date: r.date,
         merchant: r.merchant,
-        notes: r.notes || 'Imported via CSV',
-        capture_method: 'csv_import',
+        notes: r.notes || "Imported via CSV",
+        capture_method: "csv_import",
         ai_confidence: 0,
         receipt_url: null,
-        status: 'confirmed',
+        status: "confirmed",
         created_at: new Date().toISOString(),
         category: {
-          id: 'cat-csv',
-          user_id: 'user-1',
-          name: overrides.get(`csv-${r.date}-${r.merchant}`.toLowerCase().replace(/\s+/g, '-')) || 'Other',
-          icon: 'tag',
-          color: '#94A3B8',
+          id: "cat-csv",
+          user_id: "user-1",
+          name:
+            overrides.get(
+              `csv-${r.date}-${r.merchant}`.toLowerCase().replace(/\s+/g, "-"),
+            ) || "Other",
+          icon: "tag",
+          color: "#94A3B8",
           monthly_budget: null,
           is_system: false,
-          created_at: '',
+          created_at: "",
         },
       }));
       // Dedupe by merchant+amount+date (same pattern as bank sync)
-      const seen = new Set(prev.map((t) => `${t.merchant}|${t.amount}|${t.date}`));
-      const deduped = csvTxs.filter((t) => !seen.has(`${t.merchant}|${t.amount}|${t.date}`));
-      const totalSpent = deduped.filter((t) => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
+      const seen = new Set(
+        prev.map((t) => `${t.merchant}|${t.amount}|${t.date}`),
+      );
+      const deduped = csvTxs.filter(
+        (t) => !seen.has(`${t.merchant}|${t.amount}|${t.date}`),
+      );
+      const totalSpent = deduped
+        .filter((t) => t.amount < 0)
+        .reduce((s, t) => s + Math.abs(t.amount), 0);
       setMonthlySpent((p) => p + totalSpent);
       setLiquidBalance((p) => p - totalSpent);
       return [...deduped, ...prev];
@@ -367,8 +464,20 @@ export default function DashboardPage() {
   };
 
   // When Copilot calls create_rule, persist it and re-evaluate existing txns
-  const handleRuleCreated = (rule: Rule) => {
+  const handleRuleCreated = async (rule: Rule) => {
     setRules((prev) => [...prev, rule]);
+    if (isAuthenticated) {
+      await fetch("/api/rules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: rule.name,
+          merchant_contains: rule.trigger_condition?.merchant_contains ?? "",
+          category_name: rule.action?.value ?? "",
+          action: rule.action?.type ?? "set_category",
+        }),
+      });
+    }
     // Re-categorize existing transactions that match the new rule
     const inputs: RuleInput[] = transactions.map((t) => ({
       id: t.id,
@@ -381,7 +490,11 @@ export default function DashboardPage() {
     if (results.length === 0) return;
     const catMap = new Map(results.map((r) => [r.txId, r.category]));
     setTransactions((prev) =>
-      prev.map((t) => (catMap.has(t.id) ? { ...t, category: { ...t.category!, name: catMap.get(t.id)! } } : t)),
+      prev.map((t) =>
+        catMap.has(t.id)
+          ? { ...t, category: { ...t.category!, name: catMap.get(t.id)! } }
+          : t,
+      ),
     );
   };
 
@@ -416,7 +529,7 @@ export default function DashboardPage() {
   if (isOnboarding) {
     return (
       <OnboardingWizard
-        onComplete={(data) => {
+        onComplete={async (data) => {
           setCurrency(data.currency);
           setMonthlyIncome(data.monthlyIncome);
           setMonthlySavingsTarget(data.monthlySavingsTarget);
@@ -425,6 +538,24 @@ export default function DashboardPage() {
               .filter((a) => a.type === "checking" || a.type === "cash")
               .reduce((sum, a) => sum + Number(a.balance), 0),
           );
+          if (isAuthenticated) {
+            await fetch("/api/profile", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                currency: data.currency,
+                monthly_income: data.monthlyIncome,
+                monthly_savings_target: data.monthlySavingsTarget,
+                onboarding_completed: true,
+              }),
+            });
+            await fetch("/api/accounts", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ accounts: data.accounts }),
+            });
+            await reloadUserData();
+          }
           setIsOnboarding(false);
         }}
       />

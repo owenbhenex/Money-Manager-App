@@ -1,34 +1,44 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { ai, QUICK_CAPTURE_SYSTEM_INSTRUCTION } from '@/lib/ai/gemini';
-import { mapAiError } from '@/lib/ai/gemini';
-import { parseJsonBody, badRequest } from '@/lib/api/body';
-import { ExtractedTransaction } from '@/types/database.types';
+import { NextRequest, NextResponse } from "next/server";
+import { ai, QUICK_CAPTURE_SYSTEM_INSTRUCTION } from "@/lib/ai/gemini";
+import { mapAiError } from "@/lib/ai/gemini";
+import { parseJsonBody, badRequest } from "@/lib/api/body";
+import { ExtractedTransaction } from "@/types/database.types";
 
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
-    const mode = (formData.get('mode') as string) || 'text';
-    const textPrompt = (formData.get('text') as string) || '';
-    const categoriesRaw = (formData.get('categories') as string) || '[]';
-    const file = formData.get('file') as File | null;
+    const mode = (formData.get("mode") as string) || "text";
+    const textPrompt = (formData.get("text") as string) || "";
+    const categoriesRaw = (formData.get("categories") as string) || "[]";
+    const file = formData.get("file") as File | null;
 
     let categories: string[] = [];
     try {
       categories = JSON.parse(categoriesRaw);
     } catch {
-      categories = ['Food & Dining', 'Transportation', 'Groceries', 'Utilities', 'Entertainment', 'Healthcare', 'Personal Care', 'Other'];
+      categories = [
+        "Food & Dining",
+        "Transportation",
+        "Groceries",
+        "Utilities",
+        "Entertainment",
+        "Healthcare",
+        "Personal Care",
+        "Other",
+      ];
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split("T")[0];
 
     // Case 1: File provided (Receipt OCR or Audio Voice Memo)
     if (file && file.size > 0) {
       const buffer = await file.arrayBuffer();
-      const base64Data = Buffer.from(buffer).toString('base64');
-      const mimeType = file.type || (mode === 'voice' ? 'audio/webm' : 'image/jpeg');
+      const base64Data = Buffer.from(buffer).toString("base64");
+      const mimeType =
+        file.type || (mode === "voice" ? "audio/webm" : "image/jpeg");
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: "gemini-2.5-flash",
         contents: [
           {
             inlineData: {
@@ -38,9 +48,9 @@ export async function POST(req: NextRequest) {
           },
           {
             text: `
-Mode: ${mode === 'voice' ? 'Voice memo transcription & parsing' : 'Receipt OCR extraction'}
+Mode: ${mode === "voice" ? "Voice memo transcription & parsing" : "Receipt OCR extraction"}
 User Note: ${textPrompt}
-Available Categories: ${categories.join(', ')}
+Available Categories: ${categories.join(", ")}
 Today's Date: ${today}
 
 Analyze the input and return ONLY a JSON object:
@@ -57,11 +67,11 @@ Analyze the input and return ONLY a JSON object:
         ],
         config: {
           systemInstruction: QUICK_CAPTURE_SYSTEM_INSTRUCTION,
-          responseMimeType: 'application/json',
+          responseMimeType: "application/json",
         },
       });
 
-      const extracted: ExtractedTransaction = JSON.parse(response.text || '{}');
+      const extracted: ExtractedTransaction = JSON.parse(response.text || "{}");
       return NextResponse.json({ success: true, data: extracted });
     }
 
@@ -69,7 +79,7 @@ Analyze the input and return ONLY a JSON object:
     if (textPrompt.trim()) {
       const prompt = `
 User Input: "${textPrompt}"
-Available Categories: ${categories.join(', ')}
+Available Categories: ${categories.join(", ")}
 Today's Date: ${today}
 
 Extract transaction details and return ONLY a JSON object:
@@ -84,39 +94,39 @@ Extract transaction details and return ONLY a JSON object:
 `;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: "gemini-2.5-flash",
         contents: prompt,
         config: {
           systemInstruction: QUICK_CAPTURE_SYSTEM_INSTRUCTION,
-          responseMimeType: 'application/json',
+          responseMimeType: "application/json",
         },
       });
 
-      const extracted: ExtractedTransaction = JSON.parse(response.text || '{}');
+      const extracted: ExtractedTransaction = JSON.parse(response.text || "{}");
       return NextResponse.json({ success: true, data: extracted });
     }
 
     return NextResponse.json(
-      { success: false, error: 'No text or file provided' },
-      { status: 400 }
+      { success: false, error: "No text or file provided" },
+      { status: 400 },
     );
   } catch (error) {
     const mapped = mapAiError(error);
-    console.error('Quick capture API error:', error);
+    console.error("Quick capture API error:", error);
     return NextResponse.json(
       {
         success: false,
         error: mapped.message,
         data: {
           amount: 0,
-          merchant: 'Manual Entry Needed',
-          category_name: 'Other',
-          date: new Date().toISOString().split('T')[0],
+          merchant: "Manual Entry Needed",
+          category_name: "Other",
+          date: new Date().toISOString().split("T")[0],
           confidence: 0.1,
-          notes: 'AI processing encountered an error',
+          notes: "AI processing encountered an error",
         },
       },
-      { status: mapped.status }
+      { status: mapped.status },
     );
   }
 }

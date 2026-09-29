@@ -1,6 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { SANDBOX_INSTITUTIONS, fetchSandboxTransactions, getInstitution } from '@/lib/bank/sandbox';
-import { parseJsonBody, badRequest } from '@/lib/api/body';
+import { NextRequest, NextResponse } from "next/server";
+import {
+  SANDBOX_INSTITUTIONS,
+  fetchSandboxTransactions,
+  getInstitution,
+} from "@/lib/bank/sandbox";
+import { parseJsonBody, badRequest } from "@/lib/api/body";
 
 interface ConnectBody {
   institution_id?: unknown;
@@ -20,12 +24,14 @@ interface ConnectBody {
 export async function GET() {
   return NextResponse.json({
     success: true,
-    institutions: SANDBOX_INSTITUTIONS.map(({ id, name, logo_color, accounts }) => ({
-      id,
-      name,
-      logo_color,
-      account_count: accounts.length,
-    })),
+    institutions: SANDBOX_INSTITUTIONS.map(
+      ({ id, name, logo_color, accounts }) => ({
+        id,
+        name,
+        logo_color,
+        account_count: accounts.length,
+      }),
+    ),
   });
 }
 
@@ -33,19 +39,19 @@ export async function POST(req: NextRequest) {
   try {
     const body = await parseJsonBody<ConnectBody>(req);
     if (body === null) {
-      return badRequest('Invalid JSON body');
+      return badRequest("Invalid JSON body");
     }
     const { institution_id } = body;
 
-    if (!institution_id || typeof institution_id !== 'string') {
-      return badRequest('institution_id is required');
+    if (!institution_id || typeof institution_id !== "string") {
+      return badRequest("institution_id is required");
     }
 
     const institution = getInstitution(institution_id);
     if (!institution) {
       return NextResponse.json(
-        { success: false, error: 'Unknown institution' },
-        { status: 404 }
+        { success: false, error: "Unknown institution" },
+        { status: 404 },
       );
     }
 
@@ -54,18 +60,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       connection: {
-        provider: 'sandbox',
+        provider: "sandbox",
         institution_name: institution.name,
         logo_color: institution.logo_color,
-        status: 'active',
+        status: "active",
         last_synced_at: new Date().toISOString(),
       },
       accounts: institution.accounts,
       transactions,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to link institution';
-    console.error('Bank connect error:', error);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    const message =
+      error instanceof Error ? error.message : "Failed to link institution";
+    console.error("Bank connect error:", error);
+    return NextResponse.json(
+      { success: false, error: message },
+      { status: 500 },
+    );
   }
 }

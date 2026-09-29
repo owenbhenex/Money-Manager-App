@@ -1,7 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { ai, mapAiError } from '@/lib/ai/gemini';
-import { fetchSandboxTransactions, SandboxTransaction } from '@/lib/bank/sandbox';
-import { parseJsonBody, badRequest } from '@/lib/api/body';
+import { NextRequest, NextResponse } from "next/server";
+import { ai, mapAiError } from "@/lib/ai/gemini";
+import {
+  fetchSandboxTransactions,
+  SandboxTransaction,
+} from "@/lib/bank/sandbox";
+import { parseJsonBody, badRequest } from "@/lib/api/body";
 
 /**
  * Recurring Subscriptions Detector — Phase 2.
@@ -15,7 +18,7 @@ interface DetectedSubscription {
   merchant: string;
   amount: number;
   category_name: string;
-  billing_cycle: 'monthly' | 'annual' | 'weekly';
+  billing_cycle: "monthly" | "annual" | "weekly";
   confidence: number;
   cancellation_tip: string;
 }
@@ -54,7 +57,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await parseJsonBody<DetectBody>(req);
     if (body === null) {
-      return badRequest('Invalid JSON body');
+      return badRequest("Invalid JSON body");
     }
     // Accept either a list of institutions or raw transactions.
     let transactions: SandboxTransaction[] = body.transactions ?? [];
@@ -68,23 +71,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         success: true,
         subscriptions: [],
-        message: 'No transactions provided for analysis.',
+        message: "No transactions provided for analysis.",
       });
     }
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: "gemini-2.5-flash",
       contents: `Transactions:
 ${JSON.stringify(transactions, null, 2)}
 
 ${SUBSCRIPTION_DETECTOR_PROMPT}`,
       config: {
-        systemInstruction: 'You are a precise financial analysis engine. Return only valid JSON.',
-        responseMimeType: 'application/json',
+        systemInstruction:
+          "You are a precise financial analysis engine. Return only valid JSON.",
+        responseMimeType: "application/json",
       },
     });
 
-    const text = response.text || '[]';
+    const text = response.text || "[]";
     let subscriptions: DetectedSubscription[];
     try {
       subscriptions = JSON.parse(text) as DetectedSubscription[];
@@ -94,7 +98,7 @@ ${SUBSCRIPTION_DETECTOR_PROMPT}`,
 
     // Compute the monthly total so the UI can show it without re-summing.
     const monthlyTotal = subscriptions
-      .filter((s) => s.billing_cycle === 'monthly')
+      .filter((s) => s.billing_cycle === "monthly")
       .reduce((sum, s) => sum + Math.abs(s.amount), 0);
 
     return NextResponse.json({
@@ -104,11 +108,16 @@ ${SUBSCRIPTION_DETECTOR_PROMPT}`,
       analyzed_count: transactions.length,
     });
   } catch (error) {
-      const mapped = mapAiError(error);
-      console.error('Subscriptions detector error:', error);
-      return NextResponse.json(
-        { success: false, error: mapped.message, subscriptions: [], monthly_total: 0 },
-        { status: mapped.status }
-      );
+    const mapped = mapAiError(error);
+    console.error("Subscriptions detector error:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: mapped.message,
+        subscriptions: [],
+        monthly_total: 0,
+      },
+      { status: mapped.status },
+    );
   }
 }
