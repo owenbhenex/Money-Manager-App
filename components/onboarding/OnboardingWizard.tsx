@@ -235,7 +235,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                   <p className="text-[11px] text-slate-400 mt-0.5">Calculated from liquid checking & savings buffer</p>
                 </div>
                 <div className="text-2xl font-bold tabular-nums text-emerald-300">
-                  ${calculatePreviewSafeToSpend().toLocaleString()}
+                  ${calculatePreviewSafeToSpend().toLocaleString("en-US")}
                 </div>
               </div>
             </div>

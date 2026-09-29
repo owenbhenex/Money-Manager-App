@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Sparkles,
   Plus,
@@ -37,7 +37,18 @@ import { Building2 } from "lucide-react";
 // toLocaleString() without an explicit locale uses the runtime default, which
 // differs between the Node server and the browser (e.g. "11.035" vs "11,035").
 // That mismatch breaks React hydration, so always pin 'en-US' here.
-const formatCurrency = (value: number) => `$${value.toLocaleString("en-US")}`;
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: "$",
+  EUR: "\u20ac",
+  GBP: "\u00a3",
+  JPY: "\u00a5",
+  CAD: "CA$",
+  AUD: "AU$",
+  IDR: "Rp",
+  SGD: "S$",
+};
+const formatCurrency = (value: number, currencyCode = "USD") =>
+  `${CURRENCY_SYMBOLS[currencyCode] ?? "$"}${value.toLocaleString("en-US")}`;
 
 // Mock Cashflow Trajectory
 const cashflowData = [
@@ -79,8 +90,8 @@ export default function DashboardPage() {
 
   // Financial State
   const [currency, setCurrency] = useState("USD");
-  const [monthlyIncome] = useState(5800);
-  const [monthlySavingsTarget] = useState(1500);
+  const [monthlyIncome, setMonthlyIncome] = useState(5800);
+  const [monthlySavingsTarget, setMonthlySavingsTarget] = useState(1500);
   const [liquidBalance, setLiquidBalance] = useState(14850);
   const [monthlySpent, setMonthlySpent] = useState(2315);
 
@@ -88,6 +99,18 @@ export default function DashboardPage() {
     0,
     liquidBalance - monthlySavingsTarget - monthlySpent,
   );
+
+  // Cmd/Ctrl+K opens Quick Capture — the header displays this shortcut.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setIsQuickCaptureOpen((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   // Transactions State
   const [transactions, setTransactions] = useState<Transaction[]>([
@@ -283,6 +306,13 @@ export default function DashboardPage() {
       <OnboardingWizard
         onComplete={(data) => {
           setCurrency(data.currency);
+          setMonthlyIncome(data.monthlyIncome);
+          setMonthlySavingsTarget(data.monthlySavingsTarget);
+          setLiquidBalance(
+            data.accounts
+              .filter((a) => a.type === "checking" || a.type === "cash")
+              .reduce((sum, a) => sum + Number(a.balance), 0),
+          );
           setIsOnboarding(false);
         }}
       />
@@ -399,11 +429,11 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="text-3xl font-bold tabular-nums text-white mt-1">
-              {formatCurrency(safeToSpend)}
+              {formatCurrency(safeToSpend, currency)}
             </div>
             <p className="text-[11px] text-slate-400 mt-2">
               Free to spend without encroaching on your{" "}
-              {formatCurrency(monthlySavingsTarget)} savings goal.
+              {formatCurrency(monthlySavingsTarget, currency)} savings goal.
             </p>
           </div>
 
@@ -417,7 +447,7 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="text-3xl font-bold tabular-nums text-white mt-1">
-              {formatCurrency(liquidBalance)}
+              {formatCurrency(liquidBalance, currency)}
             </div>
             <div className="flex items-center gap-1 text-xs text-emerald-400 mt-2 font-medium">
               <TrendingUp className="w-3.5 h-3.5" />
@@ -432,7 +462,7 @@ export default function DashboardPage() {
               <span className="text-slate-400">Pace: 39%</span>
             </div>
             <div className="text-3xl font-bold tabular-nums text-white mt-1">
-              {formatCurrency(monthlySpent)}
+              {formatCurrency(monthlySpent, currency)}
             </div>
             <div className="mt-2.5">
               <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
@@ -444,8 +474,10 @@ export default function DashboardPage() {
                 />
               </div>
               <div className="flex justify-between text-[10px] text-slate-400 mt-1">
-                <span>Inflow: {formatCurrency(monthlyIncome)}</span>
-                <span>Target: {formatCurrency(monthlySavingsTarget)}</span>
+                <span>Inflow: {formatCurrency(monthlyIncome, currency)}</span>
+                <span>
+                  Target: {formatCurrency(monthlySavingsTarget, currency)}
+                </span>
               </div>
             </div>
           </div>
@@ -651,8 +683,8 @@ export default function DashboardPage() {
                     }`}
                   >
                     {tx.amount > 0
-                      ? `+$${tx.amount.toFixed(2)}`
-                      : `-$${Math.abs(tx.amount).toFixed(2)}`}
+                      ? `+${CURRENCY_SYMBOLS[currency] ?? "$"}${tx.amount.toFixed(2)}`
+                      : `-${CURRENCY_SYMBOLS[currency] ?? "$"}${Math.abs(tx.amount).toFixed(2)}`}
                   </span>
                   <span className="text-[10px] text-slate-500 capitalize">
                     {tx.capture_method.replace("_", " ")}

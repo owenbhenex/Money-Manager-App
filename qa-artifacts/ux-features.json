@@ -1,0 +1,52 @@
+[
+  {
+    "id": "UX-001-cmdk",
+    "status": "PASS",
+    "detail": "Cmd+K opens Quick Capture: true"
+  },
+  {
+    "id": "UX-003-ledger",
+    "status": "PASS",
+    "detail": "synced merchants in ledger: Spotify Premium, Verizon Wireless"
+  },
+  {
+    "id": "UX-003-spent",
+    "status": "PASS",
+    "detail": "burn-rate updated: 18.40 -> 2,835.76"
+  },
+  {
+    "id": "UX-003-bank",
+    "status": "PASS",
+    "detail": "liquid balance updated: 18.40 -> 14,329.24"
+  },
+  {
+    "id": "UX-003-sts",
+    "status": "PASS",
+    "detail": "safe-to-spend recomputed: 18.40 -> 9,993.48"
+  },
+  {
+    "id": "UX-005-currency",
+    "status": "PASS",
+    "detail": "currency selection applied: true"
+  },
+  {
+    "id": "UX-005-income",
+    "status": "PASS",
+    "detail": "income entry applied: null -> 7,777"
+  },
+  {
+    "id": "UX-005-wizard-close",
+    "status": "PASS",
+    "detail": "wizard closes on finish"
+  },
+  {
+    "id": "UX-006-rule",
+    "status": "SKIP",
+    "detail": "AI quota blocked (env)"
+  },
+  {
+    "id": "UX-007-undo",
+    "status": "SKIP",
+    "detail": "requires live AI parse (quota exhausted); code-verified in handleTransactionSaved"
+  }
+]

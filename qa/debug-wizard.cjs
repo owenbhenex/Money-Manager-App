@@ -1,0 +1,41 @@
+// Debug the wizard finish flow step by step
+const { chromium } = require('playwright-core');
+const EXE = 'C:/Users/owenb/AppData/Local/ms-playwright/chromium-1234/chrome-win64/chrome.exe';
+(async () => {
+  const browser = await chromium.launch({ executablePath: EXE, headless: true });
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await ctx.newPage();
+  page.on('console', (m) => { if (m.type() === 'error') console.log('CONSOLE-ERR:', m.text().slice(0, 200)); });
+  await page.goto('http://localhost:3000/', { waitUntil: 'networkidle' });
+
+  await page.locator('button[title="Re-run Setup Wizard"]').click();
+  await page.waitForTimeout(900);
+  console.log('STEP1 title:', (await page.innerText('h2')).slice(0, 40));
+  await page.locator('button', { hasText: 'EUR' }).first().click();
+  await page.locator('button', { hasText: 'Next: Setup Accounts' }).first().click();
+  await page.waitForTimeout(600);
+  console.log('STEP2 title:', (await page.innerText('h2')).slice(0, 40));
+  const nums = page.locator('input[type="number"]');
+  console.log('step2 number inputs:', await nums.count());
+  await nums.first().fill('4321');
+  await page.locator('button', { hasText: 'Next: Targets' }).first().click();
+  await page.waitForTimeout(600);
+  console.log('STEP3 title:', (await page.innerText('h2')).slice(0, 40));
+  const nums3 = page.locator('input[type="number"]');
+  console.log('step3 number inputs:', await nums3.count());
+  const v0 = await nums3.nth(0).inputValue();
+  const v1 = await nums3.nth(1).inputValue();
+  console.log('income field value before:', v0, '| savings field:', v1);
+  await nums3.nth(0).fill('7777');
+  console.log('income field value after fill:', await nums3.nth(0).inputValue());
+  await page.locator('button', { hasText: 'Finish Setup' }).first().click();
+  await page.waitForTimeout(1200);
+  const body = await page.innerText('body');
+  const m = body.match(/Inflow[^\n]*\n?[^\n]*/);
+  console.log('INFLOW LINE:', m ? m[0] : 'not found');
+  const eur = body.match(/[^\n]*\u20ac[^\n]*/);
+  console.log('EUR LINE:', eur ? eur[0].slice(0, 80) : 'no euro sign found');
+  console.log('has $14,850:', body.includes('14,850'));
+  await ctx.close();
+  await browser.close();
+})().catch((e) => { console.error('FATAL:', e.message); process.exit(1); });
